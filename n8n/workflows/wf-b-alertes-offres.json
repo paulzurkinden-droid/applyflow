@@ -1,0 +1,1690 @@
+﻿{
+    "updatedAt":  "2026-03-29T21:30:30.097Z",
+    "createdAt":  "2026-03-29T20:35:26.825Z",
+    "id":  "IfrDW7U3g7yzxr1d",
+    "name":  "WF-B - Alertes Offres Emploi",
+    "description":  null,
+    "active":  true,
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "rule":  {
+                                                      "interval":  [
+                                                                       {
+                                                                           "field":  "cronExpression",
+                                                                           "expression":  "0 8 * * *"
+                                                                       },
+                                                                       {
+                                                                           "field":  "cronExpression",
+                                                                           "expression":  "0 18 * * *"
+                                                                       }
+                                                                   ]
+                                                  }
+                                     },
+                      "id":  "2849c5a1-a676-4ef1-ac0c-0a3f557456f7",
+                      "type":  "n8n-nodes-base.scheduleTrigger",
+                      "name":  "Cron 8h et 18h",
+                      "position":  [
+                                       240,
+                                       300
+                                   ],
+                      "typeVersion":  1.1
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "profils",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "actif",
+                                                                                "condition":  "equal",
+                                                                                "keyValue":  true
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "limit":  100,
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "ef19a4ea-758a-4a43-be44-d2767026ca22",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - Profils actifs",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       460,
+                                       300
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "preferences_recherche",
+                                         "filters":  {
+
+                                                     },
+                                         "limit":  500,
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "9481648a-d5f8-417f-9320-3be4282e650d",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - Pr�f�rences",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       680,
+                                       300
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Construire URLs de recherche par utilisateur\nconst profils = $(\u0027Supabase - Profils actifs\u0027).all();\nconst prefs = $(\u0027Supabase - Pr�f�rences\u0027).all();\n\nconst cantonToAdzuna = {\n  \u0027Vaud\u0027: \u0027vaud\u0027, \u0027Gen�ve\u0027: \u0027geneve\u0027, \u0027Fribourg\u0027: \u0027fribourg\u0027,\n  \u0027Valais\u0027: \u0027valais\u0027, \u0027Neuch�tel\u0027: \u0027neuchatel\u0027, \u0027Jura\u0027: \u0027jura\u0027,\n  \u0027Toute la Suisse\u0027: \u0027\u0027, \u0027Berne\u0027: \u0027berne\u0027, \u0027Soleure\u0027: \u0027solothurn\u0027\n};\n\nconst APP_ID = $env[\u0027ADZUNA_APP_ID\u0027] || \u0027{{ADZUNA_APP_ID}}\u0027;\nconst APP_KEY = $env[\u0027ADZUNA_APP_KEY\u0027] || \u0027{{ADZUNA_APP_KEY}}\u0027;\n\nconst results = [];\n\nfor (const profilItem of profils) {\n  const profil = profilItem.json;\n  // Trouver les pr�f�rences de ce profil\n  const prefItem = prefs.find(p =\u003e p.json.user_id === profil.id);\n  if (!prefItem) continue;\n  const pref = prefItem.json;\n\n  const poste = encodeURIComponent(pref.poste_cible || \u0027\u0027);\n  const localisationRaw = pref.localisation || \u0027\u0027;\n  const cantons = localisationRaw.split(\u0027,\u0027).map(c =\u003e c.trim());\n  const canton = cantons[0] || \u0027\u0027;\n  const cantonAdzuna = cantonToAdzuna[canton] || \u0027\u0027;\n\n  const adzunaUrl = `https://api.adzuna.com/v1/api/jobs/ch/search/1?app_id=${APP_ID}\u0026app_key=${APP_KEY}\u0026what=${poste}\u0026where=${encodeURIComponent(cantonAdzuna)}\u0026results_per_page=20\u0026sort_by=date\u0026content-type=application/json\u0026language=fr`;\n  const confUrl = `https://www.jobs.admin.ch/api/v1/jobs/rss?language=fr\u0026query=${poste}`;\n  const jobupUrl = `https://www.jobup.ch/fr/jobs/rss/?term=${poste}\u0026region=${encodeURIComponent(canton)}`;\n\n  results.push({\n    json: {\n      profil_id: profil.id,\n      email: profil.email,\n      nom: profil.nom,\n      plan: profil.plan,\n      poste_cible: pref.poste_cible,\n      localisation: pref.localisation,\n      type_contrat: pref.type_contrat || \u0027\u0027,\n      annees_exp: profil.cv_texte ? 5 : 0,\n      cv_texte: profil.cv_texte || \u0027\u0027,\n      urls: {\n        adzuna: adzunaUrl,\n        confederation: confUrl,\n        jobup: jobupUrl\n      }\n    }\n  });\n}\n\nreturn results;\n"
+                                     },
+                      "id":  "1fc97b75-c7ad-4e9d-8365-307ce9080203",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Construire URLs",
+                      "position":  [
+                                       900,
+                                       300
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ $json.urls.adzuna }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      },
+                                                         "timeout":  15000
+                                                     }
+                                     },
+                      "id":  "0181763d-2743-4678-afb4-f06f729571a1",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "name":  "HTTP - Fetch Adzuna",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       1120,
+                                       200
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ $json.urls.confederation }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "text"
+                                                                                       }
+                                                                      },
+                                                         "timeout":  15000
+                                                     }
+                                     },
+                      "id":  "a4d22ab5-6fc8-46f5-915f-a59f21733341",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "name":  "HTTP - Fetch RSS Conf�d�ration",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       1120,
+                                       340
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ $json.urls.jobup }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "text"
+                                                                                       }
+                                                                      },
+                                                         "timeout":  15000
+                                                     }
+                                     },
+                      "id":  "ed31fe87-080c-4f21-bd84-d3640a7587ea",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "name":  "HTTP - Fetch RSS Jobup",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       1120,
+                                       480
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Parser et normaliser les offres des 3 sources\n// Donn�es de contexte du noud parent (Code - Construire URLs)\nconst userContext = $(\u0027Code - Construire URLs\u0027).item.json;\nconst profil_id = userContext.profil_id;\nconst email = userContext.email;\n\n// Helpers RSS/XML parser sans npm\nfunction parseRSSItem(xml, source) {\n  const offres = [];\n  const itemRegex = /\u003citem[^\u003e]*\u003e([\\s\\S]*?)\u003c\\/item\u003e/gi;\n  let itemMatch;\n  while ((itemMatch = itemRegex.exec(xml)) !== null) {\n    const item = itemMatch[1];\n    const getTag = (tag) =\u003e {\n      const m = item.match(new RegExp(`\u003c${tag}[^\u003e]*\u003e\u003c!\\\\[CDATA\\\\[([\\\\s\\\\S]*?)\\\\]\\\\]\u003e\u003c\\/${tag}\u003e`, \u0027i\u0027))\n             || item.match(new RegExp(`\u003c${tag}[^\u003e]*\u003e([\\\\s\\\\S]*?)\u003c\\/${tag}\u003e`, \u0027i\u0027));\n      return m ? m[1].trim() : \u0027\u0027;\n    };\n    const titre = getTag(\u0027title\u0027);\n    const url = getTag(\u0027link\u0027) || getTag(\u0027guid\u0027);\n    const description = getTag(\u0027description\u0027).substring(0, 2000);\n    const pubDate = getTag(\u0027pubDate\u0027);\n    let entreprise = getTag(\u0027author\u0027) || getTag(\u0027source\u0027) || source;\n    let localisation = getTag(\u0027location\u0027) || getTag(\u0027georss:point\u0027) || \u0027\u0027;\n\n    let dateStr = \u0027\u0027;\n    if (pubDate) {\n      try { dateStr = new Date(pubDate).toISOString().split(\u0027T\u0027)[0]; } catch(e) { dateStr = new Date().toISOString().split(\u0027T\u0027)[0]; }\n    } else {\n      dateStr = new Date().toISOString().split(\u0027T\u0027)[0];\n    }\n\n    if (titre \u0026\u0026 url) {\n      offres.push({ source, titre, entreprise, url, localisation, date_publication: dateStr, description });\n    }\n  }\n  return offres;\n}\n\nconst offresNormalisees = [];\n\n// --- Adzuna ---\ntry {\n  const adzunaData = $(\u0027HTTP - Fetch Adzuna\u0027).item.json;\n  if (adzunaData \u0026\u0026 adzunaData.results) {\n    for (const r of adzunaData.results) {\n      offresNormalisees.push({\n        source: \u0027Adzuna\u0027,\n        titre: r.title || \u0027\u0027,\n        entreprise: (r.company \u0026\u0026 r.company.display_name) || \u0027\u0027,\n        url: r.redirect_url || \u0027\u0027,\n        localisation: (r.location \u0026\u0026 r.location.display_name) || \u0027\u0027,\n        date_publication: r.created ? r.created.split(\u0027T\u0027)[0] : new Date().toISOString().split(\u0027T\u0027)[0],\n        description: (r.description || \u0027\u0027).substring(0, 2000)\n      });\n    }\n  }\n} catch(e) { /* source ignor�e */ }\n\n// --- Conf�d�ration RSS ---\ntry {\n  const confXml = $(\u0027HTTP - Fetch RSS Conf�d�ration\u0027).item.json.data || \u0027\u0027;\n  const confOffres = parseRSSItem(confXml, \u0027Confederation\u0027);\n  offresNormalisees.push(...confOffres);\n} catch(e) { /* source ignor�e */ }\n\n// --- Jobup RSS ---\ntry {\n  const jobupXml = $(\u0027HTTP - Fetch RSS Jobup\u0027).item.json.data || \u0027\u0027;\n  const jobupOffres = parseRSSItem(jobupXml, \u0027Jobup\u0027);\n  offresNormalisees.push(...jobupOffres);\n} catch(e) { /* source ignor�e */ }\n\n// D�duplique par URL dans ce batch\nconst seen = new Set();\nconst unique = offresNormalisees.filter(o =\u003e {\n  if (!o.url || seen.has(o.url)) return false;\n  seen.add(o.url);\n  return true;\n});\n\n// Attacher le contexte utilisateur\nreturn [{\n  json: {\n    profil_id,\n    email,\n    userContext,\n    offres: unique\n  }\n}];\n"
+                                     },
+                      "id":  "25d4272c-9706-460e-8c7b-d36424e68156",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Parser offres",
+                      "position":  [
+                                       1360,
+                                       340
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "offres_alertes",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "user_id",
+                                                                                "condition":  "equal",
+                                                                                "keyValue":  "={{ $json.profil_id }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "limit":  500,
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "195e0bea-0d2b-4428-9725-8e413f0ff500",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - V�rifier offres existantes",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       1580,
+                                       340
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Filtrer les offres d�j� connues en base\nconst parsed = $(\u0027Code - Parser offres\u0027).item.json;\nconst existingRaw = $(\u0027Supabase - V�rifier offres existantes\u0027).all();\n\nconst existingUrls = new Set(existingRaw.map(e =\u003e e.json.url).filter(Boolean));\n\nconst nouvelles = (parsed.offres || []).filter(o =\u003e !existingUrls.has(o.url));\n\nreturn [{\n  json: {\n    profil_id: parsed.profil_id,\n    email: parsed.email,\n    userContext: parsed.userContext,\n    offres: nouvelles,\n    count: nouvelles.length\n  }\n}];\n"
+                                     },
+                      "id":  "09a54014-1b98-42f9-a226-3d65fe6a6759",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - D�doublonner",
+                      "position":  [
+                                       1800,
+                                       340
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "new-offers",
+                                                                                   "leftValue":  "={{ $json.count }}",
+                                                                                   "rightValue":  0,
+                                                                                   "operator":  {
+                                                                                                    "type":  "number",
+                                                                                                    "operation":  "gt"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        }
+                                     },
+                      "id":  "bef34735-6e09-4e5a-b31f-28933214fbca",
+                      "type":  "n8n-nodes-base.if",
+                      "name":  "IF - Nouvelles offres ?",
+                      "position":  [
+                                       2020,
+                                       340
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Pr�parer batch scoring Claude (max 20 offres)\nconst data = $(\u0027Code - D�doublonner\u0027).item.json;\nconst ctx = data.userContext;\nconst offres = data.offres.slice(0, 20);\n\nconst cvTexte = ctx.cv_texte ? `\\n- Extrait CV : ${ctx.cv_texte.substring(0, 500)}` : \u0027\u0027;\n\nconst offresFormatted = offres.map((o, i) =\u003e\n  `[${i + 1}] ${o.titre} chez ${o.entreprise || \u0027N/A\u0027} (${o.localisation || \u0027N/A\u0027})\\n${(o.description || \u0027\u0027).substring(0, 200)}`\n).join(\u0027\\n\\n\u0027);\n\nconst prompt = `Tu es un expert en recrutement suisse. Analyse ces offres d\u0027emploi et score leur pertinence pour ce candidat sur une �chelle de 1 � 10.\n\nPROFIL DU CANDIDAT :\n- Poste cible : ${ctx.poste_cible}\n- Localisation souhait�e : ${ctx.localisation}\n- Type de contrat : ${ctx.type_contrat || \u0027Non sp�cifi�\u0027}${cvTexte}\n\nOFFRES � SCORER :\n${offresFormatted}\n\nR�ponds UNIQUEMENT avec un JSON valide, sans markdown :\n[\n  {\"index\": 1, \"score\": 8, \"mots_cles\": [\"exemple\"], \"raison\": \"explication courte\"},\n  ...\n]\n\nCrit�res de scoring :\n- 9-10 : Correspondance quasi parfaite\n- 7-8  : Bonne correspondance\n- 5-6  : Correspondance partielle\n- 3-4  : Faible correspondance\n- 1-2  : Hors cible`;\n\nreturn [{\n  json: {\n    profil_id: data.profil_id,\n    email: data.email,\n    userContext: ctx,\n    offres,\n    prompt,\n    requestBody: {\n      model: \u0027claude-sonnet-4-6\u0027,\n      max_tokens: 2048,\n      messages: [{ role: \u0027user\u0027, content: prompt }]\n    }\n  }\n}];\n"
+                                     },
+                      "id":  "4e6ac839-14ee-4874-9f7f-5ec05ddee3ce",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Pr�parer batch scoring",
+                      "position":  [
+                                       2240,
+                                       240
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.anthropic.com/v1/messages",
+                                         "authentication":  "genericCredentialType",
+                                         "genericAuthType":  "httpHeaderAuth",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "x-api-key",
+                                                                                         "value":  "={{$credentials.value}}"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "anthropic-version",
+                                                                                         "value":  "2023-06-01"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "content-type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify($json.requestBody) }}",
+                                         "options":  {
+                                                         "timeout":  45000
+                                                     }
+                                     },
+                      "id":  "cd4bbc79-516b-4e0e-a839-b3414aa3a264",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "l9fVHncLdNjJk6Gg",
+                                                                 "name":  "Header Auth account"
+                                                             }
+                                      },
+                      "name":  "HTTP - Claude Scoring",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       2460,
+                                       240
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Parser la r�ponse de scoring Claude\nconst claudeResp = $(\u0027HTTP - Claude Scoring\u0027).item.json;\nconst scoringContext = $(\u0027Code - Pr�parer batch scoring\u0027).item.json;\n\nlet raw = \u0027\u0027;\ntry {\n  raw = claudeResp.content[0].text || \u0027\u0027;\n} catch(e) { raw = \u0027\u0027; }\n\n// Nettoyer les backticks markdown\nraw = raw.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027).trim();\n\nlet scores = [];\ntry {\n  scores = JSON.parse(raw);\n} catch(e) {\n  // Fallback: assigner score 5 � toutes les offres\n  scores = scoringContext.offres.map((_, i) =\u003e ({ index: i + 1, score: 5, mots_cles: [], raison: \u0027Score par d�faut (erreur parsing)\u0027 }));\n}\n\n// Associer score � chaque offre\nconst offresScored = scoringContext.offres.map((offre, i) =\u003e {\n  const scoreData = scores.find(s =\u003e s.index === i + 1) || { score: 5, mots_cles: [], raison: \u0027\u0027 };\n  return {\n    ...offre,\n    score: scoreData.score,\n    mots_cles: scoreData.mots_cles || [],\n    raison: scoreData.raison || \u0027\u0027,\n    profil_id: scoringContext.profil_id,\n    email: scoringContext.email\n  };\n});\n\nreturn [{\n  json: {\n    profil_id: scoringContext.profil_id,\n    email: scoringContext.email,\n    userContext: scoringContext.userContext,\n    offresScored\n  }\n}];\n"
+                                     },
+                      "id":  "e67769f1-e886-4842-b113-0b98a5c0eac7",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Parser scores Claude",
+                      "position":  [
+                                       2680,
+                                       240
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// �clater les offres scor�es en items individuels\nconst data = $input.first().json;\nconst { offresScored, profil_id, email, userContext } = data;\n\nif (!offresScored || offresScored.length === 0) return [];\n\nreturn offresScored.map(offre =\u003e ({\n  json: {\n    profil_id,\n    email,\n    userContext,\n    source: offre.source,\n    titre: offre.titre,\n    entreprise: offre.entreprise || \u0027\u0027,\n    url: offre.url,\n    localisation: offre.localisation || \u0027\u0027,\n    date_publication: offre.date_publication || new Date().toISOString().split(\u0027T\u0027)[0],\n    description: (offre.description || \u0027\u0027).substring(0, 2000),\n    score: offre.score,\n    raison: offre.raison || \u0027\u0027,\n    date_trouvee: new Date().toISOString().split(\u0027T\u0027)[0],\n    envoyee: false\n  }\n}));\n"
+                                     },
+                      "id":  "47e2d33d-80d5-440f-a6b7-e72fbd256857",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - �clater offres",
+                      "position":  [
+                                       2900,
+                                       240
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "create",
+                                         "tableId":  "offres_alertes",
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "user_id",
+                                                                                  "fieldValue":  "={{ $json.profil_id }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "source",
+                                                                                  "fieldValue":  "={{ $json.source }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "titre",
+                                                                                  "fieldValue":  "={{ $json.titre }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "entreprise",
+                                                                                  "fieldValue":  "={{ $json.entreprise }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "url",
+                                                                                  "fieldValue":  "={{ $json.url }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "localisation",
+                                                                                  "fieldValue":  "={{ $json.localisation }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "date_trouvee",
+                                                                                  "fieldValue":  "={{ $json.date_trouvee }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "date_publication",
+                                                                                  "fieldValue":  "={{ $json.date_publication }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "description",
+                                                                                  "fieldValue":  "={{ $json.description }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "score",
+                                                                                  "fieldValue":  "={{ $json.score }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "raison",
+                                                                                  "fieldValue":  "={{ $json.raison }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "envoyee",
+                                                                                  "fieldValue":  "={{ $json.envoyee }}"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "id":  "b48440fa-a7fb-4fa2-81e7-967d727e165a",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - �crire offres_alertes",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       3120,
+                                       240
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "score-check",
+                                                                                   "leftValue":  "={{ $(\u0027Code - �clater offres\u0027).item.json.score }}",
+                                                                                   "rightValue":  7,
+                                                                                   "operator":  {
+                                                                                                    "type":  "number",
+                                                                                                    "operation":  "gte"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        }
+                                     },
+                      "id":  "c5bdaea5-0a31-4cea-a9aa-2ea40e70e730",
+                      "type":  "n8n-nodes-base.if",
+                      "name":  "IF - Score ? 7 ?",
+                      "position":  [
+                                       3340,
+                                       240
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Pr�parer email digest pour offres score ? 7\nconst offre = $(\u0027Code - �clater offres\u0027).item.json;\nconst email = offre.email;\nconst poste_cible = offre.userContext.poste_cible;\nconst localisation = offre.userContext.localisation;\n\nconst html = `\n\u003cdiv style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"\u003e\n  \u003ch2 style=\"color: #2563eb;\"\u003e?? Nouvelle offre pertinente pour vous\u003c/h2\u003e\n  \u003cp\u003eS�lectionn�e pour : \u003cstrong\u003e${poste_cible}\u003c/strong\u003e en \u003cstrong\u003e${localisation}\u003c/strong\u003e\u003c/p\u003e\n  \u003cdiv style=\"border:1px solid #e5e7eb; padding:16px; margin:8px 0; border-radius:8px;\"\u003e\n    \u003ch3 style=\"margin:0 0 8px;\"\u003e\u003ca href=\"${offre.url}\" style=\"color:#2563eb; text-decoration:none;\"\u003e${offre.titre}\u003c/a\u003e\u003c/h3\u003e\n    \u003cp style=\"margin:4px 0; color:#6b7280;\"\u003e${offre.entreprise || \u0027N/A\u0027} - ${offre.localisation || \u0027N/A\u0027}\u003c/p\u003e\n    \u003cp style=\"margin:4px 0;\"\u003eScore : \u003cstrong style=\"color:#16a34a;\"\u003e${offre.score}/10\u003c/strong\u003e - ${offre.raison}\u003c/p\u003e\n    \u003ca href=\"${offre.url}\" style=\"display:inline-block; margin-top:8px; padding:8px 16px; background:#2563eb; color:white; border-radius:6px; text-decoration:none;\"\u003eVoir l\u0027offre ?\u003c/a\u003e\n  \u003c/div\u003e\n  \u003cp style=\"color:#9ca3af; font-size:12px; margin-top:24px;\"\u003eApplyFlow - Pour modifier vos pr�f�rences, r�pondez � cet email.\u003c/p\u003e\n\u003c/div\u003e\n`;\n\nreturn [{\n  json: {\n    offre_id: $(\u0027Supabase - �crire offres_alertes\u0027).item.json.id,\n    email,\n    subject: `?? Nouvelle offre pertinente : ${offre.titre}`,\n    html\n  }\n}];\n"
+                                     },
+                      "id":  "fa5f30fb-72ae-4335-83e8-194722c5e255",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Pr�parer email digest",
+                      "position":  [
+                                       3560,
+                                       140
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.resend.com/emails",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Authorization",
+                                                                                         "value":  "Bearer {{RESEND_API_KEY}}"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003calertes@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
+                                         "options":  {
+                                                         "timeout":  10000
+                                                     }
+                                     },
+                      "id":  "fdccd25e-a9be-4c7d-ac87-df6c220923ad",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "name":  "HTTP - Envoyer alerte Resend",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       3780,
+                                       140
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "tableId":  "offres_alertes",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "id",
+                                                                                "condition":  "equal",
+                                                                                "keyValue":  "={{ $(\u0027Code - Pr�parer email digest\u0027).item.json.offre_id }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "envoyee",
+                                                                                  "fieldValue":  true
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "id":  "2cba6079-089a-4aec-8daf-3a3fe986bc53",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - Marquer envoy�e",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       4000,
+                                       140
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+
+                                     },
+                      "id":  "7e069891-3c2b-4f8f-a041-188ce7a70f01",
+                      "type":  "n8n-nodes-base.noOp",
+                      "name":  "No Operation - Pas de nouvelles offres",
+                      "position":  [
+                                       2240,
+                                       460
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+
+                                     },
+                      "id":  "4d2d2e79-1888-4548-9d04-ff83dfe91314",
+                      "type":  "n8n-nodes-base.noOp",
+                      "name":  "No Operation - Score \u003c 7",
+                      "position":  [
+                                       3560,
+                                       360
+                                   ],
+                      "typeVersion":  1
+                  }
+              ],
+    "connections":  {
+                        "Cron 8h et 18h":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Supabase - Profils actifs",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           },
+                        "Supabase - Profils actifs":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "Supabase - Pr�f�rences",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ]
+                                                      },
+                        "Supabase - Pr�f�rences":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Code - Construire URLs",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "Code - Construire URLs":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "HTTP - Fetch Adzuna",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        },
+                                                                        {
+                                                                            "node":  "HTTP - Fetch RSS Conf�d�ration",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        },
+                                                                        {
+                                                                            "node":  "HTTP - Fetch RSS Jobup",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "HTTP - Fetch Adzuna":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Code - Parser offres",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "HTTP - Fetch RSS Conf�d�ration":  {
+                                                               "main":  [
+                                                                            [
+                                                                                {
+                                                                                    "node":  "Code - Parser offres",
+                                                                                    "type":  "main",
+                                                                                    "index":  0
+                                                                                }
+                                                                            ]
+                                                                        ]
+                                                           },
+                        "HTTP - Fetch RSS Jobup":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Code - Parser offres",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "Code - Parser offres":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Supabase - V�rifier offres existantes",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ]
+                                                 },
+                        "Supabase - V�rifier offres existantes":  {
+                                                                      "main":  [
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "Code - D�doublonner",
+                                                                                           "type":  "main",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                                  },
+                        "Code - D�doublonner":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "IF - Nouvelles offres ?",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "IF - Nouvelles offres ?":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Code - Pr�parer batch scoring",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ],
+                                                                     [
+                                                                         {
+                                                                             "node":  "No Operation - Pas de nouvelles offres",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "Code - Pr�parer batch scoring":  {
+                                                              "main":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "HTTP - Claude Scoring",
+                                                                                   "type":  "main",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                          },
+                        "HTTP - Claude Scoring":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Code - Parser scores Claude",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Code - Parser scores Claude":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Code - �clater offres",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                        "Code - �clater offres":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Supabase - �crire offres_alertes",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Supabase - �crire offres_alertes":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "IF - Score ? 7 ?",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                        "IF - Score ? 7 ?":  {
+                                                 "main":  [
+                                                              [
+                                                                  {
+                                                                      "node":  "Code - Pr�parer email digest",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ],
+                                                              [
+                                                                  {
+                                                                      "node":  "No Operation - Score \u003c 7",
+                                                                      "type":  "main",
+                                                                      "index":  0
+                                                                  }
+                                                              ]
+                                                          ]
+                                             },
+                        "Code - Pr�parer email digest":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "HTTP - Envoyer alerte Resend",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                        "HTTP - Envoyer alerte Resend":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "Supabase - Marquer envoy�e",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveManualExecutions":  true,
+                     "callerPolicy":  "workflowsFromSameOwner",
+                     "errorWorkflow":  "",
+                     "availableInMCP":  false
+                 },
+    "staticData":  {
+                       "node:Cron 8h et 18h":  {
+                                                   "recurrenceRules":  [
+
+                                                                       ]
+                                               }
+                   },
+    "meta":  null,
+    "pinData":  null,
+    "versionId":  "2a23c3a7-5be4-4684-a324-4f8734d1f707",
+    "activeVersionId":  "2a23c3a7-5be4-4684-a324-4f8734d1f707",
+    "versionCounter":  6,
+    "triggerCount":  1,
+    "shared":  [
+                   {
+                       "updatedAt":  "2026-03-29T20:35:26.827Z",
+                       "createdAt":  "2026-03-29T20:35:26.827Z",
+                       "role":  "workflow:owner",
+                       "workflowId":  "IfrDW7U3g7yzxr1d",
+                       "projectId":  "kCh6XDPhK4rzq87S",
+                       "project":  {
+                                       "updatedAt":  "2025-09-19T17:04:52.450Z",
+                                       "createdAt":  "2025-09-19T17:04:49.024Z",
+                                       "id":  "kCh6XDPhK4rzq87S",
+                                       "name":  "Paul Zurkinden \u003cpaul.zurkinden@yahoo.com\u003e",
+                                       "type":  "personal",
+                                       "icon":  null,
+                                       "description":  null,
+                                       "projectRelations":  [
+                                                                {
+                                                                    "updatedAt":  "2025-09-19T17:04:49.025Z",
+                                                                    "createdAt":  "2025-09-19T17:04:49.025Z",
+                                                                    "userId":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
+                                                                    "projectId":  "kCh6XDPhK4rzq87S",
+                                                                    "user":  {
+                                                                                 "updatedAt":  "2026-03-29T20:12:47.000Z",
+                                                                                 "createdAt":  "2025-09-19T17:04:47.495Z",
+                                                                                 "id":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
+                                                                                 "email":  "paul.zurkinden@yahoo.com",
+                                                                                 "firstName":  "Paul",
+                                                                                 "lastName":  "Zurkinden",
+                                                                                 "personalizationAnswers":  null,
+                                                                                 "settings":  {
+                                                                                                  "userActivated":  true,
+                                                                                                  "firstSuccessfulWorkflowId":  "Ihoi3ApwrTIlnarI",
+                                                                                                  "userActivatedAt":  1759094160476,
+                                                                                                  "npsSurvey":  {
+                                                                                                                    "responded":  true,
+                                                                                                                    "lastShownAt":  1771262327971
+                                                                                                                },
+                                                                                                  "dismissedCallouts":  {
+                                                                                                                            "preBuiltAgentsModalCallout":  true
+                                                                                                                        },
+                                                                                                  "easyAIWorkflowOnboarded":  true,
+                                                                                                  "userClaimedAiCredits":  true
+                                                                                              },
+                                                                                 "disabled":  false,
+                                                                                 "mfaEnabled":  false,
+                                                                                 "lastActiveAt":  "2026-03-28",
+                                                                                 "isPending":  false
+                                                                             }
+                                                                }
+                                                            ]
+                                   }
+                   }
+               ],
+    "tags":  [
+
+             ],
+    "activeVersion":  {
+                          "updatedAt":  "2026-03-29T21:30:30.098Z",
+                          "createdAt":  "2026-03-29T21:30:30.098Z",
+                          "versionId":  "2a23c3a7-5be4-4684-a324-4f8734d1f707",
+                          "workflowId":  "IfrDW7U3g7yzxr1d",
+                          "nodes":  [
+                                        {
+                                            "parameters":  {
+                                                               "rule":  {
+                                                                            "interval":  [
+                                                                                             {
+                                                                                                 "field":  "cronExpression",
+                                                                                                 "expression":  "0 8 * * *"
+                                                                                             },
+                                                                                             {
+                                                                                                 "field":  "cronExpression",
+                                                                                                 "expression":  "0 18 * * *"
+                                                                                             }
+                                                                                         ]
+                                                                        }
+                                                           },
+                                            "id":  "2849c5a1-a676-4ef1-ac0c-0a3f557456f7",
+                                            "type":  "n8n-nodes-base.scheduleTrigger",
+                                            "name":  "Cron 8h et 18h",
+                                            "position":  [
+                                                             240,
+                                                             300
+                                                         ],
+                                            "typeVersion":  1.1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "getAll",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "actif",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  true
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "limit":  100,
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "ef19a4ea-758a-4a43-be44-d2767026ca22",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - Profils actifs",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             460,
+                                                             300
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "getAll",
+                                                               "tableId":  "preferences_recherche",
+                                                               "filters":  {
+
+                                                                           },
+                                                               "limit":  500,
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "9481648a-d5f8-417f-9320-3be4282e650d",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - Pr�f�rences",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             680,
+                                                             300
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Construire URLs de recherche par utilisateur\nconst profils = $(\u0027Supabase - Profils actifs\u0027).all();\nconst prefs = $(\u0027Supabase - Pr�f�rences\u0027).all();\n\nconst cantonToAdzuna = {\n  \u0027Vaud\u0027: \u0027vaud\u0027, \u0027Gen�ve\u0027: \u0027geneve\u0027, \u0027Fribourg\u0027: \u0027fribourg\u0027,\n  \u0027Valais\u0027: \u0027valais\u0027, \u0027Neuch�tel\u0027: \u0027neuchatel\u0027, \u0027Jura\u0027: \u0027jura\u0027,\n  \u0027Toute la Suisse\u0027: \u0027\u0027, \u0027Berne\u0027: \u0027berne\u0027, \u0027Soleure\u0027: \u0027solothurn\u0027\n};\n\nconst APP_ID = $env[\u0027ADZUNA_APP_ID\u0027] || \u0027{{ADZUNA_APP_ID}}\u0027;\nconst APP_KEY = $env[\u0027ADZUNA_APP_KEY\u0027] || \u0027{{ADZUNA_APP_KEY}}\u0027;\n\nconst results = [];\n\nfor (const profilItem of profils) {\n  const profil = profilItem.json;\n  // Trouver les pr�f�rences de ce profil\n  const prefItem = prefs.find(p =\u003e p.json.user_id === profil.id);\n  if (!prefItem) continue;\n  const pref = prefItem.json;\n\n  const poste = encodeURIComponent(pref.poste_cible || \u0027\u0027);\n  const localisationRaw = pref.localisation || \u0027\u0027;\n  const cantons = localisationRaw.split(\u0027,\u0027).map(c =\u003e c.trim());\n  const canton = cantons[0] || \u0027\u0027;\n  const cantonAdzuna = cantonToAdzuna[canton] || \u0027\u0027;\n\n  const adzunaUrl = `https://api.adzuna.com/v1/api/jobs/ch/search/1?app_id=${APP_ID}\u0026app_key=${APP_KEY}\u0026what=${poste}\u0026where=${encodeURIComponent(cantonAdzuna)}\u0026results_per_page=20\u0026sort_by=date\u0026content-type=application/json\u0026language=fr`;\n  const confUrl = `https://www.jobs.admin.ch/api/v1/jobs/rss?language=fr\u0026query=${poste}`;\n  const jobupUrl = `https://www.jobup.ch/fr/jobs/rss/?term=${poste}\u0026region=${encodeURIComponent(canton)}`;\n\n  results.push({\n    json: {\n      profil_id: profil.id,\n      email: profil.email,\n      nom: profil.nom,\n      plan: profil.plan,\n      poste_cible: pref.poste_cible,\n      localisation: pref.localisation,\n      type_contrat: pref.type_contrat || \u0027\u0027,\n      annees_exp: profil.cv_texte ? 5 : 0,\n      cv_texte: profil.cv_texte || \u0027\u0027,\n      urls: {\n        adzuna: adzunaUrl,\n        confederation: confUrl,\n        jobup: jobupUrl\n      }\n    }\n  });\n}\n\nreturn results;\n"
+                                                           },
+                                            "id":  "1fc97b75-c7ad-4e9d-8365-307ce9080203",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Construire URLs",
+                                            "position":  [
+                                                             900,
+                                                             300
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "url":  "={{ $json.urls.adzuna }}",
+                                                               "options":  {
+                                                                               "response":  {
+                                                                                                "response":  {
+                                                                                                                 "responseFormat":  "json"
+                                                                                                             }
+                                                                                            },
+                                                                               "timeout":  15000
+                                                                           }
+                                                           },
+                                            "id":  "0181763d-2743-4678-afb4-f06f729571a1",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Fetch Adzuna",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1120,
+                                                             200
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "url":  "={{ $json.urls.confederation }}",
+                                                               "options":  {
+                                                                               "response":  {
+                                                                                                "response":  {
+                                                                                                                 "responseFormat":  "text"
+                                                                                                             }
+                                                                                            },
+                                                                               "timeout":  15000
+                                                                           }
+                                                           },
+                                            "id":  "a4d22ab5-6fc8-46f5-915f-a59f21733341",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Fetch RSS Conf�d�ration",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1120,
+                                                             340
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "url":  "={{ $json.urls.jobup }}",
+                                                               "options":  {
+                                                                               "response":  {
+                                                                                                "response":  {
+                                                                                                                 "responseFormat":  "text"
+                                                                                                             }
+                                                                                            },
+                                                                               "timeout":  15000
+                                                                           }
+                                                           },
+                                            "id":  "ed31fe87-080c-4f21-bd84-d3640a7587ea",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Fetch RSS Jobup",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1120,
+                                                             480
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Parser et normaliser les offres des 3 sources\n// Donn�es de contexte du noud parent (Code - Construire URLs)\nconst userContext = $(\u0027Code - Construire URLs\u0027).item.json;\nconst profil_id = userContext.profil_id;\nconst email = userContext.email;\n\n// Helpers RSS/XML parser sans npm\nfunction parseRSSItem(xml, source) {\n  const offres = [];\n  const itemRegex = /\u003citem[^\u003e]*\u003e([\\s\\S]*?)\u003c\\/item\u003e/gi;\n  let itemMatch;\n  while ((itemMatch = itemRegex.exec(xml)) !== null) {\n    const item = itemMatch[1];\n    const getTag = (tag) =\u003e {\n      const m = item.match(new RegExp(`\u003c${tag}[^\u003e]*\u003e\u003c!\\\\[CDATA\\\\[([\\\\s\\\\S]*?)\\\\]\\\\]\u003e\u003c\\/${tag}\u003e`, \u0027i\u0027))\n             || item.match(new RegExp(`\u003c${tag}[^\u003e]*\u003e([\\\\s\\\\S]*?)\u003c\\/${tag}\u003e`, \u0027i\u0027));\n      return m ? m[1].trim() : \u0027\u0027;\n    };\n    const titre = getTag(\u0027title\u0027);\n    const url = getTag(\u0027link\u0027) || getTag(\u0027guid\u0027);\n    const description = getTag(\u0027description\u0027).substring(0, 2000);\n    const pubDate = getTag(\u0027pubDate\u0027);\n    let entreprise = getTag(\u0027author\u0027) || getTag(\u0027source\u0027) || source;\n    let localisation = getTag(\u0027location\u0027) || getTag(\u0027georss:point\u0027) || \u0027\u0027;\n\n    let dateStr = \u0027\u0027;\n    if (pubDate) {\n      try { dateStr = new Date(pubDate).toISOString().split(\u0027T\u0027)[0]; } catch(e) { dateStr = new Date().toISOString().split(\u0027T\u0027)[0]; }\n    } else {\n      dateStr = new Date().toISOString().split(\u0027T\u0027)[0];\n    }\n\n    if (titre \u0026\u0026 url) {\n      offres.push({ source, titre, entreprise, url, localisation, date_publication: dateStr, description });\n    }\n  }\n  return offres;\n}\n\nconst offresNormalisees = [];\n\n// --- Adzuna ---\ntry {\n  const adzunaData = $(\u0027HTTP - Fetch Adzuna\u0027).item.json;\n  if (adzunaData \u0026\u0026 adzunaData.results) {\n    for (const r of adzunaData.results) {\n      offresNormalisees.push({\n        source: \u0027Adzuna\u0027,\n        titre: r.title || \u0027\u0027,\n        entreprise: (r.company \u0026\u0026 r.company.display_name) || \u0027\u0027,\n        url: r.redirect_url || \u0027\u0027,\n        localisation: (r.location \u0026\u0026 r.location.display_name) || \u0027\u0027,\n        date_publication: r.created ? r.created.split(\u0027T\u0027)[0] : new Date().toISOString().split(\u0027T\u0027)[0],\n        description: (r.description || \u0027\u0027).substring(0, 2000)\n      });\n    }\n  }\n} catch(e) { /* source ignor�e */ }\n\n// --- Conf�d�ration RSS ---\ntry {\n  const confXml = $(\u0027HTTP - Fetch RSS Conf�d�ration\u0027).item.json.data || \u0027\u0027;\n  const confOffres = parseRSSItem(confXml, \u0027Confederation\u0027);\n  offresNormalisees.push(...confOffres);\n} catch(e) { /* source ignor�e */ }\n\n// --- Jobup RSS ---\ntry {\n  const jobupXml = $(\u0027HTTP - Fetch RSS Jobup\u0027).item.json.data || \u0027\u0027;\n  const jobupOffres = parseRSSItem(jobupXml, \u0027Jobup\u0027);\n  offresNormalisees.push(...jobupOffres);\n} catch(e) { /* source ignor�e */ }\n\n// D�duplique par URL dans ce batch\nconst seen = new Set();\nconst unique = offresNormalisees.filter(o =\u003e {\n  if (!o.url || seen.has(o.url)) return false;\n  seen.add(o.url);\n  return true;\n});\n\n// Attacher le contexte utilisateur\nreturn [{\n  json: {\n    profil_id,\n    email,\n    userContext,\n    offres: unique\n  }\n}];\n"
+                                                           },
+                                            "id":  "25d4272c-9706-460e-8c7b-d36424e68156",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Parser offres",
+                                            "position":  [
+                                                             1360,
+                                                             340
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "getAll",
+                                                               "tableId":  "offres_alertes",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "user_id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $json.profil_id }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "limit":  500,
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "195e0bea-0d2b-4428-9725-8e413f0ff500",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - V�rifier offres existantes",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             1580,
+                                                             340
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Filtrer les offres d�j� connues en base\nconst parsed = $(\u0027Code - Parser offres\u0027).item.json;\nconst existingRaw = $(\u0027Supabase - V�rifier offres existantes\u0027).all();\n\nconst existingUrls = new Set(existingRaw.map(e =\u003e e.json.url).filter(Boolean));\n\nconst nouvelles = (parsed.offres || []).filter(o =\u003e !existingUrls.has(o.url));\n\nreturn [{\n  json: {\n    profil_id: parsed.profil_id,\n    email: parsed.email,\n    userContext: parsed.userContext,\n    offres: nouvelles,\n    count: nouvelles.length\n  }\n}];\n"
+                                                           },
+                                            "id":  "09a54014-1b98-42f9-a226-3d65fe6a6759",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - D�doublonner",
+                                            "position":  [
+                                                             1800,
+                                                             340
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "conditions":  {
+                                                                                  "options":  {
+                                                                                                  "caseSensitive":  true,
+                                                                                                  "leftValue":  "",
+                                                                                                  "typeValidation":  "strict"
+                                                                                              },
+                                                                                  "conditions":  [
+                                                                                                     {
+                                                                                                         "id":  "new-offers",
+                                                                                                         "leftValue":  "={{ $json.count }}",
+                                                                                                         "rightValue":  0,
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "number",
+                                                                                                                          "operation":  "gt"
+                                                                                                                      }
+                                                                                                     }
+                                                                                                 ],
+                                                                                  "combinator":  "and"
+                                                                              }
+                                                           },
+                                            "id":  "bef34735-6e09-4e5a-b31f-28933214fbca",
+                                            "type":  "n8n-nodes-base.if",
+                                            "name":  "IF - Nouvelles offres ?",
+                                            "position":  [
+                                                             2020,
+                                                             340
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr�parer batch scoring Claude (max 20 offres)\nconst data = $(\u0027Code - D�doublonner\u0027).item.json;\nconst ctx = data.userContext;\nconst offres = data.offres.slice(0, 20);\n\nconst cvTexte = ctx.cv_texte ? `\\n- Extrait CV : ${ctx.cv_texte.substring(0, 500)}` : \u0027\u0027;\n\nconst offresFormatted = offres.map((o, i) =\u003e\n  `[${i + 1}] ${o.titre} chez ${o.entreprise || \u0027N/A\u0027} (${o.localisation || \u0027N/A\u0027})\\n${(o.description || \u0027\u0027).substring(0, 200)}`\n).join(\u0027\\n\\n\u0027);\n\nconst prompt = `Tu es un expert en recrutement suisse. Analyse ces offres d\u0027emploi et score leur pertinence pour ce candidat sur une �chelle de 1 � 10.\n\nPROFIL DU CANDIDAT :\n- Poste cible : ${ctx.poste_cible}\n- Localisation souhait�e : ${ctx.localisation}\n- Type de contrat : ${ctx.type_contrat || \u0027Non sp�cifi�\u0027}${cvTexte}\n\nOFFRES � SCORER :\n${offresFormatted}\n\nR�ponds UNIQUEMENT avec un JSON valide, sans markdown :\n[\n  {\"index\": 1, \"score\": 8, \"mots_cles\": [\"exemple\"], \"raison\": \"explication courte\"},\n  ...\n]\n\nCrit�res de scoring :\n- 9-10 : Correspondance quasi parfaite\n- 7-8  : Bonne correspondance\n- 5-6  : Correspondance partielle\n- 3-4  : Faible correspondance\n- 1-2  : Hors cible`;\n\nreturn [{\n  json: {\n    profil_id: data.profil_id,\n    email: data.email,\n    userContext: ctx,\n    offres,\n    prompt,\n    requestBody: {\n      model: \u0027claude-sonnet-4-6\u0027,\n      max_tokens: 2048,\n      messages: [{ role: \u0027user\u0027, content: prompt }]\n    }\n  }\n}];\n"
+                                                           },
+                                            "id":  "4e6ac839-14ee-4874-9f7f-5ec05ddee3ce",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr�parer batch scoring",
+                                            "position":  [
+                                                             2240,
+                                                             240
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.anthropic.com/v1/messages",
+                                                               "authentication":  "genericCredentialType",
+                                                               "genericAuthType":  "httpHeaderAuth",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "x-api-key",
+                                                                                                               "value":  "={{$credentials.value}}"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "anthropic-version",
+                                                                                                               "value":  "2023-06-01"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "content-type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify($json.requestBody) }}",
+                                                               "options":  {
+                                                                               "timeout":  45000
+                                                                           }
+                                                           },
+                                            "id":  "cd4bbc79-516b-4e0e-a839-b3414aa3a264",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "credentials":  {
+                                                                "httpHeaderAuth":  {
+                                                                                       "id":  "l9fVHncLdNjJk6Gg",
+                                                                                       "name":  "Header Auth account"
+                                                                                   }
+                                                            },
+                                            "name":  "HTTP - Claude Scoring",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             2460,
+                                                             240
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Parser la r�ponse de scoring Claude\nconst claudeResp = $(\u0027HTTP - Claude Scoring\u0027).item.json;\nconst scoringContext = $(\u0027Code - Pr�parer batch scoring\u0027).item.json;\n\nlet raw = \u0027\u0027;\ntry {\n  raw = claudeResp.content[0].text || \u0027\u0027;\n} catch(e) { raw = \u0027\u0027; }\n\n// Nettoyer les backticks markdown\nraw = raw.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027).trim();\n\nlet scores = [];\ntry {\n  scores = JSON.parse(raw);\n} catch(e) {\n  // Fallback: assigner score 5 � toutes les offres\n  scores = scoringContext.offres.map((_, i) =\u003e ({ index: i + 1, score: 5, mots_cles: [], raison: \u0027Score par d�faut (erreur parsing)\u0027 }));\n}\n\n// Associer score � chaque offre\nconst offresScored = scoringContext.offres.map((offre, i) =\u003e {\n  const scoreData = scores.find(s =\u003e s.index === i + 1) || { score: 5, mots_cles: [], raison: \u0027\u0027 };\n  return {\n    ...offre,\n    score: scoreData.score,\n    mots_cles: scoreData.mots_cles || [],\n    raison: scoreData.raison || \u0027\u0027,\n    profil_id: scoringContext.profil_id,\n    email: scoringContext.email\n  };\n});\n\nreturn [{\n  json: {\n    profil_id: scoringContext.profil_id,\n    email: scoringContext.email,\n    userContext: scoringContext.userContext,\n    offresScored\n  }\n}];\n"
+                                                           },
+                                            "id":  "e67769f1-e886-4842-b113-0b98a5c0eac7",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Parser scores Claude",
+                                            "position":  [
+                                                             2680,
+                                                             240
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// �clater les offres scor�es en items individuels\nconst data = $input.first().json;\nconst { offresScored, profil_id, email, userContext } = data;\n\nif (!offresScored || offresScored.length === 0) return [];\n\nreturn offresScored.map(offre =\u003e ({\n  json: {\n    profil_id,\n    email,\n    userContext,\n    source: offre.source,\n    titre: offre.titre,\n    entreprise: offre.entreprise || \u0027\u0027,\n    url: offre.url,\n    localisation: offre.localisation || \u0027\u0027,\n    date_publication: offre.date_publication || new Date().toISOString().split(\u0027T\u0027)[0],\n    description: (offre.description || \u0027\u0027).substring(0, 2000),\n    score: offre.score,\n    raison: offre.raison || \u0027\u0027,\n    date_trouvee: new Date().toISOString().split(\u0027T\u0027)[0],\n    envoyee: false\n  }\n}));\n"
+                                                           },
+                                            "id":  "47e2d33d-80d5-440f-a6b7-e72fbd256857",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - �clater offres",
+                                            "position":  [
+                                                             2900,
+                                                             240
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "create",
+                                                               "tableId":  "offres_alertes",
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "user_id",
+                                                                                                        "fieldValue":  "={{ $json.profil_id }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "source",
+                                                                                                        "fieldValue":  "={{ $json.source }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "titre",
+                                                                                                        "fieldValue":  "={{ $json.titre }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "entreprise",
+                                                                                                        "fieldValue":  "={{ $json.entreprise }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "url",
+                                                                                                        "fieldValue":  "={{ $json.url }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "localisation",
+                                                                                                        "fieldValue":  "={{ $json.localisation }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "date_trouvee",
+                                                                                                        "fieldValue":  "={{ $json.date_trouvee }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "date_publication",
+                                                                                                        "fieldValue":  "={{ $json.date_publication }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "description",
+                                                                                                        "fieldValue":  "={{ $json.description }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "score",
+                                                                                                        "fieldValue":  "={{ $json.score }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "raison",
+                                                                                                        "fieldValue":  "={{ $json.raison }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "envoyee",
+                                                                                                        "fieldValue":  "={{ $json.envoyee }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "id":  "b48440fa-a7fb-4fa2-81e7-967d727e165a",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - �crire offres_alertes",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             3120,
+                                                             240
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "conditions":  {
+                                                                                  "options":  {
+                                                                                                  "caseSensitive":  true,
+                                                                                                  "leftValue":  "",
+                                                                                                  "typeValidation":  "strict"
+                                                                                              },
+                                                                                  "conditions":  [
+                                                                                                     {
+                                                                                                         "id":  "score-check",
+                                                                                                         "leftValue":  "={{ $(\u0027Code - �clater offres\u0027).item.json.score }}",
+                                                                                                         "rightValue":  7,
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "number",
+                                                                                                                          "operation":  "gte"
+                                                                                                                      }
+                                                                                                     }
+                                                                                                 ],
+                                                                                  "combinator":  "and"
+                                                                              }
+                                                           },
+                                            "id":  "c5bdaea5-0a31-4cea-a9aa-2ea40e70e730",
+                                            "type":  "n8n-nodes-base.if",
+                                            "name":  "IF - Score ? 7 ?",
+                                            "position":  [
+                                                             3340,
+                                                             240
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr�parer email digest pour offres score ? 7\nconst offre = $(\u0027Code - �clater offres\u0027).item.json;\nconst email = offre.email;\nconst poste_cible = offre.userContext.poste_cible;\nconst localisation = offre.userContext.localisation;\n\nconst html = `\n\u003cdiv style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"\u003e\n  \u003ch2 style=\"color: #2563eb;\"\u003e?? Nouvelle offre pertinente pour vous\u003c/h2\u003e\n  \u003cp\u003eS�lectionn�e pour : \u003cstrong\u003e${poste_cible}\u003c/strong\u003e en \u003cstrong\u003e${localisation}\u003c/strong\u003e\u003c/p\u003e\n  \u003cdiv style=\"border:1px solid #e5e7eb; padding:16px; margin:8px 0; border-radius:8px;\"\u003e\n    \u003ch3 style=\"margin:0 0 8px;\"\u003e\u003ca href=\"${offre.url}\" style=\"color:#2563eb; text-decoration:none;\"\u003e${offre.titre}\u003c/a\u003e\u003c/h3\u003e\n    \u003cp style=\"margin:4px 0; color:#6b7280;\"\u003e${offre.entreprise || \u0027N/A\u0027} - ${offre.localisation || \u0027N/A\u0027}\u003c/p\u003e\n    \u003cp style=\"margin:4px 0;\"\u003eScore : \u003cstrong style=\"color:#16a34a;\"\u003e${offre.score}/10\u003c/strong\u003e - ${offre.raison}\u003c/p\u003e\n    \u003ca href=\"${offre.url}\" style=\"display:inline-block; margin-top:8px; padding:8px 16px; background:#2563eb; color:white; border-radius:6px; text-decoration:none;\"\u003eVoir l\u0027offre ?\u003c/a\u003e\n  \u003c/div\u003e\n  \u003cp style=\"color:#9ca3af; font-size:12px; margin-top:24px;\"\u003eApplyFlow - Pour modifier vos pr�f�rences, r�pondez � cet email.\u003c/p\u003e\n\u003c/div\u003e\n`;\n\nreturn [{\n  json: {\n    offre_id: $(\u0027Supabase - �crire offres_alertes\u0027).item.json.id,\n    email,\n    subject: `?? Nouvelle offre pertinente : ${offre.titre}`,\n    html\n  }\n}];\n"
+                                                           },
+                                            "id":  "fa5f30fb-72ae-4335-83e8-194722c5e255",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr�parer email digest",
+                                            "position":  [
+                                                             3560,
+                                                             140
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.resend.com/emails",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "Authorization",
+                                                                                                               "value":  "Bearer {{RESEND_API_KEY}}"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003calertes@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
+                                                               "options":  {
+                                                                               "timeout":  10000
+                                                                           }
+                                                           },
+                                            "id":  "fdccd25e-a9be-4c7d-ac87-df6c220923ad",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Envoyer alerte Resend",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             3780,
+                                                             140
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "update",
+                                                               "tableId":  "offres_alertes",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $(\u0027Code - Pr�parer email digest\u0027).item.json.offre_id }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "envoyee",
+                                                                                                        "fieldValue":  true
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "id":  "2cba6079-089a-4aec-8daf-3a3fe986bc53",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - Marquer envoy�e",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             4000,
+                                                             140
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+
+                                                           },
+                                            "id":  "7e069891-3c2b-4f8f-a041-188ce7a70f01",
+                                            "type":  "n8n-nodes-base.noOp",
+                                            "name":  "No Operation - Pas de nouvelles offres",
+                                            "position":  [
+                                                             2240,
+                                                             460
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+
+                                                           },
+                                            "id":  "4d2d2e79-1888-4548-9d04-ff83dfe91314",
+                                            "type":  "n8n-nodes-base.noOp",
+                                            "name":  "No Operation - Score \u003c 7",
+                                            "position":  [
+                                                             3560,
+                                                             360
+                                                         ],
+                                            "typeVersion":  1
+                                        }
+                                    ],
+                          "connections":  {
+                                              "Cron 8h et 18h":  {
+                                                                     "main":  [
+                                                                                  [
+                                                                                      {
+                                                                                          "node":  "Supabase - Profils actifs",
+                                                                                          "type":  "main",
+                                                                                          "index":  0
+                                                                                      }
+                                                                                  ]
+                                                                              ]
+                                                                 },
+                                              "Supabase - Profils actifs":  {
+                                                                                "main":  [
+                                                                                             [
+                                                                                                 {
+                                                                                                     "node":  "Supabase - Pr�f�rences",
+                                                                                                     "type":  "main",
+                                                                                                     "index":  0
+                                                                                                 }
+                                                                                             ]
+                                                                                         ]
+                                                                            },
+                                              "Supabase - Pr�f�rences":  {
+                                                                             "main":  [
+                                                                                          [
+                                                                                              {
+                                                                                                  "node":  "Code - Construire URLs",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              }
+                                                                                          ]
+                                                                                      ]
+                                                                         },
+                                              "Code - Construire URLs":  {
+                                                                             "main":  [
+                                                                                          [
+                                                                                              {
+                                                                                                  "node":  "HTTP - Fetch Adzuna",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              },
+                                                                                              {
+                                                                                                  "node":  "HTTP - Fetch RSS Conf�d�ration",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              },
+                                                                                              {
+                                                                                                  "node":  "HTTP - Fetch RSS Jobup",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              }
+                                                                                          ]
+                                                                                      ]
+                                                                         },
+                                              "HTTP - Fetch Adzuna":  {
+                                                                          "main":  [
+                                                                                       [
+                                                                                           {
+                                                                                               "node":  "Code - Parser offres",
+                                                                                               "type":  "main",
+                                                                                               "index":  0
+                                                                                           }
+                                                                                       ]
+                                                                                   ]
+                                                                      },
+                                              "HTTP - Fetch RSS Conf�d�ration":  {
+                                                                                     "main":  [
+                                                                                                  [
+                                                                                                      {
+                                                                                                          "node":  "Code - Parser offres",
+                                                                                                          "type":  "main",
+                                                                                                          "index":  0
+                                                                                                      }
+                                                                                                  ]
+                                                                                              ]
+                                                                                 },
+                                              "HTTP - Fetch RSS Jobup":  {
+                                                                             "main":  [
+                                                                                          [
+                                                                                              {
+                                                                                                  "node":  "Code - Parser offres",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              }
+                                                                                          ]
+                                                                                      ]
+                                                                         },
+                                              "Code - Parser offres":  {
+                                                                           "main":  [
+                                                                                        [
+                                                                                            {
+                                                                                                "node":  "Supabase - V�rifier offres existantes",
+                                                                                                "type":  "main",
+                                                                                                "index":  0
+                                                                                            }
+                                                                                        ]
+                                                                                    ]
+                                                                       },
+                                              "Supabase - V�rifier offres existantes":  {
+                                                                                            "main":  [
+                                                                                                         [
+                                                                                                             {
+                                                                                                                 "node":  "Code - D�doublonner",
+                                                                                                                 "type":  "main",
+                                                                                                                 "index":  0
+                                                                                                             }
+                                                                                                         ]
+                                                                                                     ]
+                                                                                        },
+                                              "Code - D�doublonner":  {
+                                                                          "main":  [
+                                                                                       [
+                                                                                           {
+                                                                                               "node":  "IF - Nouvelles offres ?",
+                                                                                               "type":  "main",
+                                                                                               "index":  0
+                                                                                           }
+                                                                                       ]
+                                                                                   ]
+                                                                      },
+                                              "IF - Nouvelles offres ?":  {
+                                                                              "main":  [
+                                                                                           [
+                                                                                               {
+                                                                                                   "node":  "Code - Pr�parer batch scoring",
+                                                                                                   "type":  "main",
+                                                                                                   "index":  0
+                                                                                               }
+                                                                                           ],
+                                                                                           [
+                                                                                               {
+                                                                                                   "node":  "No Operation - Pas de nouvelles offres",
+                                                                                                   "type":  "main",
+                                                                                                   "index":  0
+                                                                                               }
+                                                                                           ]
+                                                                                       ]
+                                                                          },
+                                              "Code - Pr�parer batch scoring":  {
+                                                                                    "main":  [
+                                                                                                 [
+                                                                                                     {
+                                                                                                         "node":  "HTTP - Claude Scoring",
+                                                                                                         "type":  "main",
+                                                                                                         "index":  0
+                                                                                                     }
+                                                                                                 ]
+                                                                                             ]
+                                                                                },
+                                              "HTTP - Claude Scoring":  {
+                                                                            "main":  [
+                                                                                         [
+                                                                                             {
+                                                                                                 "node":  "Code - Parser scores Claude",
+                                                                                                 "type":  "main",
+                                                                                                 "index":  0
+                                                                                             }
+                                                                                         ]
+                                                                                     ]
+                                                                        },
+                                              "Code - Parser scores Claude":  {
+                                                                                  "main":  [
+                                                                                               [
+                                                                                                   {
+                                                                                                       "node":  "Code - �clater offres",
+                                                                                                       "type":  "main",
+                                                                                                       "index":  0
+                                                                                                   }
+                                                                                               ]
+                                                                                           ]
+                                                                              },
+                                              "Code - �clater offres":  {
+                                                                            "main":  [
+                                                                                         [
+                                                                                             {
+                                                                                                 "node":  "Supabase - �crire offres_alertes",
+                                                                                                 "type":  "main",
+                                                                                                 "index":  0
+                                                                                             }
+                                                                                         ]
+                                                                                     ]
+                                                                        },
+                                              "Supabase - �crire offres_alertes":  {
+                                                                                       "main":  [
+                                                                                                    [
+                                                                                                        {
+                                                                                                            "node":  "IF - Score ? 7 ?",
+                                                                                                            "type":  "main",
+                                                                                                            "index":  0
+                                                                                                        }
+                                                                                                    ]
+                                                                                                ]
+                                                                                   },
+                                              "IF - Score ? 7 ?":  {
+                                                                       "main":  [
+                                                                                    [
+                                                                                        {
+                                                                                            "node":  "Code - Pr�parer email digest",
+                                                                                            "type":  "main",
+                                                                                            "index":  0
+                                                                                        }
+                                                                                    ],
+                                                                                    [
+                                                                                        {
+                                                                                            "node":  "No Operation - Score \u003c 7",
+                                                                                            "type":  "main",
+                                                                                            "index":  0
+                                                                                        }
+                                                                                    ]
+                                                                                ]
+                                                                   },
+                                              "Code - Pr�parer email digest":  {
+                                                                                   "main":  [
+                                                                                                [
+                                                                                                    {
+                                                                                                        "node":  "HTTP - Envoyer alerte Resend",
+                                                                                                        "type":  "main",
+                                                                                                        "index":  0
+                                                                                                    }
+                                                                                                ]
+                                                                                            ]
+                                                                               },
+                                              "HTTP - Envoyer alerte Resend":  {
+                                                                                   "main":  [
+                                                                                                [
+                                                                                                    {
+                                                                                                        "node":  "Supabase - Marquer envoy�e",
+                                                                                                        "type":  "main",
+                                                                                                        "index":  0
+                                                                                                    }
+                                                                                                ]
+                                                                                            ]
+                                                                               }
+                                          },
+                          "authors":  "Paul Zurkinden",
+                          "name":  null,
+                          "description":  null
+                      }
+}
