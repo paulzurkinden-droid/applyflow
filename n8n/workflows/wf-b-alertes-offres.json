@@ -1,5 +1,5 @@
 ﻿{
-    "updatedAt":  "2026-03-29T22:35:19.135Z",
+    "updatedAt":  "2026-03-29T22:45:11.948Z",
     "createdAt":  "2026-03-29T20:35:26.825Z",
     "id":  "IfrDW7U3g7yzxr1d",
     "name":  "WF-B - Alertes Offres Emploi",
@@ -477,10 +477,6 @@
                                          "headerParameters":  {
                                                                   "parameters":  [
                                                                                      {
-                                                                                         "name":  "Authorization",
-                                                                                         "value":  "Bearer {{RESEND_API_KEY}}"
-                                                                                     },
-                                                                                     {
                                                                                          "name":  "Content-Type",
                                                                                          "value":  "application/json"
                                                                                      }
@@ -491,7 +487,9 @@
                                          "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003calertes@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
                                          "options":  {
                                                          "timeout":  10000
-                                                     }
+                                                     },
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpHeaderAuth"
                                      },
                       "id":  "fdccd25e-a9be-4c7d-ac87-df6c220923ad",
                       "type":  "n8n-nodes-base.httpRequest",
@@ -501,7 +499,13 @@
                                        3780,
                                        140
                                    ],
-                      "typeVersion":  4.2
+                      "typeVersion":  4.2,
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "tc2f1NdNXAUtStcp",
+                                                                 "name":  "Resend API"
+                                                             }
+                                      }
                   },
                   {
                       "parameters":  {
@@ -830,9 +834,9 @@
                    },
     "meta":  null,
     "pinData":  null,
-    "versionId":  "b85ec5df-7bcf-44ba-baa4-03703209af26",
-    "activeVersionId":  "b85ec5df-7bcf-44ba-baa4-03703209af26",
-    "versionCounter":  8,
+    "versionId":  "e271b1b5-4383-4830-af77-fbe896994220",
+    "activeVersionId":  "e271b1b5-4383-4830-af77-fbe896994220",
+    "versionCounter":  12,
     "triggerCount":  1,
     "shared":  [
                    {
@@ -891,9 +895,9 @@
 
              ],
     "activeVersion":  {
-                          "updatedAt":  "2026-03-29T22:35:19.137Z",
-                          "createdAt":  "2026-03-29T22:35:19.137Z",
-                          "versionId":  "b85ec5df-7bcf-44ba-baa4-03703209af26",
+                          "updatedAt":  "2026-03-29T22:45:11.949Z",
+                          "createdAt":  "2026-03-29T22:45:11.949Z",
+                          "versionId":  "e271b1b5-4383-4830-af77-fbe896994220",
                           "workflowId":  "IfrDW7U3g7yzxr1d",
                           "nodes":  [
                                         {
@@ -1366,10 +1370,6 @@
                                                                "headerParameters":  {
                                                                                         "parameters":  [
                                                                                                            {
-                                                                                                               "name":  "Authorization",
-                                                                                                               "value":  "Bearer {{RESEND_API_KEY}}"
-                                                                                                           },
-                                                                                                           {
                                                                                                                "name":  "Content-Type",
                                                                                                                "value":  "application/json"
                                                                                                            }
@@ -1380,7 +1380,9 @@
                                                                "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003calertes@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
                                                                "options":  {
                                                                                "timeout":  10000
-                                                                           }
+                                                                           },
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "httpHeaderAuth"
                                                            },
                                             "id":  "fdccd25e-a9be-4c7d-ac87-df6c220923ad",
                                             "type":  "n8n-nodes-base.httpRequest",
@@ -1390,7 +1392,13 @@
                                                              3780,
                                                              140
                                                          ],
-                                            "typeVersion":  4.2
+                                            "typeVersion":  4.2,
+                                            "credentials":  {
+                                                                "httpHeaderAuth":  {
+                                                                                       "id":  "tc2f1NdNXAUtStcp",
+                                                                                       "name":  "Resend API"
+                                                                                   }
+                                                            }
                                         },
                                         {
                                             "parameters":  {

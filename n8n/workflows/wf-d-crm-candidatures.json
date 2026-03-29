@@ -358,7 +358,7 @@
                                                                     "userId":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
                                                                     "projectId":  "kCh6XDPhK4rzq87S",
                                                                     "user":  {
-                                                                                 "updatedAt":  "2026-03-29T20:12:47.000Z",
+                                                                                 "updatedAt":  "2026-03-29T22:03:01.000Z",
                                                                                  "createdAt":  "2025-09-19T17:04:47.495Z",
                                                                                  "id":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
                                                                                  "email":  "paul.zurkinden@yahoo.com",
@@ -381,7 +381,7 @@
                                                                                               },
                                                                                  "disabled":  false,
                                                                                  "mfaEnabled":  false,
-                                                                                 "lastActiveAt":  "2026-03-28",
+                                                                                 "lastActiveAt":  "2026-03-29",
                                                                                  "isPending":  false
                                                                              }
                                                                 }

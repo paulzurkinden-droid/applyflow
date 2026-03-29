@@ -21,7 +21,7 @@ Go to **Stripe Dashboard > Products > Add product** and create 3 products:
 
 ### Product 2: Pro
 - **Name:** ApplyFlow Pro
-- **Description:** Alertes emploi + génération de lettres de motivation (Claude AI)
+- **Description:** Alertes emploi + generation de lettres de motivation (Claude AI)
 - **Pricing:** CHF 19.00 / month (recurring)
 - **Price metadata:**
   - Key: `plan`
@@ -35,7 +35,7 @@ Go to **Stripe Dashboard > Products > Add product** and create 3 products:
   - Key: `plan`
   - Value: `booster`
 
-> ⚠️ **Important:** The `plan` metadata must be set on the **Price** object (not the Product). This is what WF-STRIPE reads to set the user's plan in Supabase.
+> **Important:** The `plan` metadata must be set on the **Price** object (not the Product). This is what WF-STRIPE reads to set the user's plan in Supabase.
 
 ---
 
@@ -44,9 +44,12 @@ Go to **Stripe Dashboard > Products > Add product** and create 3 products:
 Go to **Stripe Dashboard > Payment Links > Create payment link** for each product:
 
 1. Select the product + price
-2. Set **Success URL:** `https://applyflow.ch/welcome?session_id={CHECKOUT_SESSION_ID}`
-3. Enable **Collect customer email**
-4. Save the link URL for each plan
+2. Set **Success URL:** `https://applyflow.ch/merci?session_id={CHECKOUT_SESSION_ID}`
+3. Set **Cancel URL:** `https://applyflow.ch/#pricing`
+4. Enable **Collect customer email**
+5. Save the link URL for each plan
+
+> **BUG-004 note:** The `/merci` page must exist on the frontend. Create a thank-you page at this route before going live.
 
 Example links to embed on your website:
 ```
@@ -78,18 +81,19 @@ After creating the webhook:
 
 ## Step 4 — Add Signing Secret to n8n Environment Variables
 
-**BUG-006 fix applied:** WF-STRIPE now uses proper HMAC-SHA256 signature verification (not static header comparison).
+**BUG-006 fix applied:** WF-STRIPE uses proper HMAC-SHA256 signature verification via Web Crypto API.
 
-The `Code - Verifier signature Stripe` node reads the secret from the n8n environment variable `STRIPE_WEBHOOK_SECRET`.
+The `Code - Verifier signature Stripe` node reads the secret from the n8n env var `STRIPE_WEBHOOK_SECRET`.
 
 1. Go to **n8n Cloud > Settings > Environment Variables**
-2. Add variable:
+2. Add:
    - **Key:** `STRIPE_WEBHOOK_SECRET`
    - **Value:** `whsec_[your-signing-secret]`
+3. Also add:
+   - **Key:** `SUPABASE_SERVICE_ROLE_KEY`
+   - **Value:** `[your Supabase service role key]` (from Supabase Dashboard > Settings > API)
 
-> ⚠️ If `STRIPE_WEBHOOK_SECRET` is not set, verification is skipped with a warning (to allow initial setup). Set it before going live.
-
-> ℹ️ The old "Header Auth account" credential (ID: `l9fVHncLdNjJk6Gg`) is no longer used for webhook auth and can be deleted.
+> If `STRIPE_WEBHOOK_SECRET` is not set, signature verification is skipped with a warning. **Must be set before go-live.**
 
 ---
 
@@ -97,41 +101,24 @@ The `Code - Verifier signature Stripe` node reads the secret from the n8n enviro
 
 ### Test with Stripe CLI (recommended)
 ```bash
-# Install Stripe CLI: https://stripe.com/docs/stripe-cli
 stripe login
 stripe listen --forward-to https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow
-
-# In another terminal, trigger a test event:
+# In another terminal:
 stripe trigger checkout.session.completed
 ```
 
-### Test via Stripe Dashboard
-1. Go to **Developers > Webhooks > [your endpoint]**
-2. Click **Send test event**
-3. Select `checkout.session.completed`
-4. Check n8n execution history for WF-STRIPE
-
 ### Verify end-to-end
 After a successful test:
-- ✅ New row in `profils` table in Supabase
-- ✅ User invited to Supabase Auth (check Authentication > Users)
-- ✅ Welcome email received (from bienvenue@applyflow.ch)
-
----
-
-## Stripe Environment Variables
-
-| Variable | Where to get it |
-|----------|----------------|
-| `STRIPE_SECRET_KEY` | Stripe Dashboard > Developers > API Keys > Secret key |
-| Webhook Signing Secret | Stripe Dashboard > Developers > Webhooks > [endpoint] > Signing secret |
+- New row in `profils` table in Supabase (plan = starter/pro/booster)
+- User invited to Supabase Auth (check Authentication > Users)
+- Welcome email received (from bienvenue@applyflow.ch)
 
 ---
 
 ## Plan Mapping
 
-| Stripe Price metadata `plan` | Supabase `profils.plan` | Monthly CHF |
-|------------------------------|------------------------|-------------|
+| Stripe Price metadata `plan` | Supabase `profils.plan` | Price CHF/month |
+|---|---|---|
 | `starter` | `starter` | 9 CHF |
 | `pro` | `pro` | 19 CHF |
 | `booster` | `booster` | 39 CHF |

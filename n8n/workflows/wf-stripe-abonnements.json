@@ -1,5 +1,5 @@
 ﻿{
-    "updatedAt":  "2026-03-29T22:36:56.713Z",
+    "updatedAt":  "2026-03-29T22:47:02.725Z",
     "createdAt":  "2026-03-29T20:35:26.438Z",
     "id":  "Sp9T1mGtUkjQy9Sn",
     "name":  "WF-STRIPE - Gestion Abonnements",
@@ -207,11 +207,11 @@
                                                                   "parameters":  [
                                                                                      {
                                                                                          "name":  "apikey",
-                                                                                         "value":  "{{SUPABASE_SERVICE_ROLE_KEY}}"
+                                                                                         "value":  "={{ $env[\u0027SUPABASE_SERVICE_ROLE_KEY\u0027] }}"
                                                                                      },
                                                                                      {
                                                                                          "name":  "Authorization",
-                                                                                         "value":  "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}"
+                                                                                         "value":  "={{ \u0027Bearer \u0027 + $env[\u0027SUPABASE_SERVICE_ROLE_KEY\u0027] }}"
                                                                                      },
                                                                                      {
                                                                                          "name":  "Content-Type",
@@ -257,10 +257,6 @@
                                          "headerParameters":  {
                                                                   "parameters":  [
                                                                                      {
-                                                                                         "name":  "Authorization",
-                                                                                         "value":  "Bearer {{RESEND_API_KEY}}"
-                                                                                     },
-                                                                                     {
                                                                                          "name":  "Content-Type",
                                                                                          "value":  "application/json"
                                                                                      }
@@ -271,7 +267,9 @@
                                          "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003cbienvenue@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
                                          "options":  {
                                                          "timeout":  10000
-                                                     }
+                                                     },
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpHeaderAuth"
                                      },
                       "id":  "6cd4db25-5170-45f5-8544-a8ab72132775",
                       "type":  "n8n-nodes-base.httpRequest",
@@ -281,7 +279,13 @@
                                        1780,
                                        100
                                    ],
-                      "typeVersion":  4.2
+                      "typeVersion":  4.2,
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "tc2f1NdNXAUtStcp",
+                                                                 "name":  "Resend API"
+                                                             }
+                                      }
                   },
                   {
                       "parameters":  {
@@ -425,10 +429,6 @@
                                          "headerParameters":  {
                                                                   "parameters":  [
                                                                                      {
-                                                                                         "name":  "Authorization",
-                                                                                         "value":  "Bearer {{RESEND_API_KEY}}"
-                                                                                     },
-                                                                                     {
                                                                                          "name":  "Content-Type",
                                                                                          "value":  "application/json"
                                                                                      }
@@ -439,7 +439,9 @@
                                          "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003cnoreply@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
                                          "options":  {
                                                          "timeout":  10000
-                                                     }
+                                                     },
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpHeaderAuth"
                                      },
                       "id":  "eca87509-db75-4122-b7bb-72c2997c6ec4",
                       "type":  "n8n-nodes-base.httpRequest",
@@ -449,7 +451,13 @@
                                        1560,
                                        500
                                    ],
-                      "typeVersion":  4.2
+                      "typeVersion":  4.2,
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "tc2f1NdNXAUtStcp",
+                                                                 "name":  "Resend API"
+                                                             }
+                                      }
                   },
                   {
                       "id":  "ee325cf8-7dbd-4cc4-a558-d0cf1aeae09e",
@@ -461,8 +469,8 @@
                                        300
                                    ],
                       "parameters":  {
-                                         "mode":  "runOnceForAllItems",
-                                         "jsCode":  "// BUG-006: Stripe HMAC signature verification using Web Crypto API\nconst sigHeader = $input.first().headers[\u0027stripe-signature\u0027] || \u0027\u0027;\nconst rawBody = $input.first().json.rawBody || JSON.stringify($input.first().json.body || $input.first().json);\n\n// Parse stripe-signature header: t=timestamp,v1=hash\nconst parts = {};\nsigHeader.split(\u0027,\u0027).forEach(part =\u003e {\n  const [k, v] = part.split(\u0027=\u0027);\n  if (k \u0026\u0026 v) parts[k] = v;\n});\n\nconst timestamp = parts[\u0027t\u0027];\nconst v1 = parts[\u0027v1\u0027];\n\nif (!timestamp || !v1) {\n  throw new Error(\u0027Stripe signature header missing or malformed\u0027);\n}\n\n// Reconstruct signed payload\nconst signedPayload = `${timestamp}.${rawBody}`;\n\n// Get secret from env - must be configured in n8n Cloud env vars as STRIPE_WEBHOOK_SECRET\nconst secret = $env[\u0027STRIPE_WEBHOOK_SECRET\u0027] || \u0027\u0027;\nif (!secret) {\n  // If secret not configured yet, log warning but continue (allows setup without blocking)\n  console.warn(\u0027[WF-STRIPE] STRIPE_WEBHOOK_SECRET not configured - skipping signature verification\u0027);\n  return $input.all();\n}\n\n// Web Crypto HMAC-SHA256 (available in n8n Cloud sandbox)\nconst encoder = new TextEncoder();\nconst keyData = encoder.encode(secret);\nconst messageData = encoder.encode(signedPayload);\n\nconst cryptoKey = await crypto.subtle.importKey(\n  \u0027raw\u0027, keyData, { name: \u0027HMAC\u0027, hash: \u0027SHA-256\u0027 }, false, [\u0027sign\u0027]\n);\nconst signature = await crypto.subtle.sign(\u0027HMAC\u0027, cryptoKey, messageData);\n\n// Convert to hex\nconst hashArray = Array.from(new Uint8Array(signature));\nconst expected = hashArray.map(b =\u003e b.toString(16).padStart(2, \u00270\u0027)).join(\u0027\u0027);\n\n// Check timestamp freshness (300 second tolerance)\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - parseInt(timestamp)) \u003e 300) {\n  throw new Error(\u0027Stripe webhook timestamp too old - replay attack?\u0027);\n}\n\nif (expected !== v1) {\n  throw new Error(\u0027Invalid Stripe signature\u0027);\n}\n\nreturn $input.all();"
+                                         "jsCode":  "// BUG-006: Stripe HMAC signature verification using Web Crypto API\nconst sigHeader = $input.first().headers[\u0027stripe-signature\u0027] || \u0027\u0027;\nconst rawBody = $input.first().json.rawBody || JSON.stringify($input.first().json.body || $input.first().json);\n\n// Parse stripe-signature header: t=timestamp,v1=hash\nconst parts = {};\nsigHeader.split(\u0027,\u0027).forEach(part =\u003e {\n  const [k, v] = part.split(\u0027=\u0027);\n  if (k \u0026\u0026 v) parts[k] = v;\n});\n\nconst timestamp = parts[\u0027t\u0027];\nconst v1 = parts[\u0027v1\u0027];\n\nif (!timestamp || !v1) {\n  throw new Error(\u0027Stripe signature header missing or malformed\u0027);\n}\n\n// Reconstruct signed payload\nconst signedPayload = `${timestamp}.${rawBody}`;\n\n// Get secret from env - must be configured in n8n Cloud env vars as STRIPE_WEBHOOK_SECRET\nconst secret = $env[\u0027STRIPE_WEBHOOK_SECRET\u0027] || \u0027\u0027;\nif (!secret) {\n  // If secret not configured yet, log warning but continue (allows setup without blocking)\n  console.warn(\u0027[WF-STRIPE] STRIPE_WEBHOOK_SECRET not configured - skipping signature verification\u0027);\n  return $input.all();\n}\n\n// Web Crypto HMAC-SHA256 (available in n8n Cloud sandbox)\nconst encoder = new TextEncoder();\nconst keyData = encoder.encode(secret);\nconst messageData = encoder.encode(signedPayload);\n\nconst cryptoKey = await crypto.subtle.importKey(\n  \u0027raw\u0027, keyData, { name: \u0027HMAC\u0027, hash: \u0027SHA-256\u0027 }, false, [\u0027sign\u0027]\n);\nconst signature = await crypto.subtle.sign(\u0027HMAC\u0027, cryptoKey, messageData);\n\n// Convert to hex\nconst hashArray = Array.from(new Uint8Array(signature));\nconst expected = hashArray.map(b =\u003e b.toString(16).padStart(2, \u00270\u0027)).join(\u0027\u0027);\n\n// Check timestamp freshness (300 second tolerance)\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - parseInt(timestamp)) \u003e 300) {\n  throw new Error(\u0027Stripe webhook timestamp too old - replay attack?\u0027);\n}\n\nif (expected !== v1) {\n  throw new Error(\u0027Invalid Stripe signature\u0027);\n}\n\nreturn $input.all();",
+                                         "mode":  "runOnceForAllItems"
                                      }
                   }
               ],
@@ -593,11 +601,13 @@
                                                               },
                         "Code - Verifier signature Stripe":  {
                                                                  "main":  [
-                                                                              {
-                                                                                  "node":  "Code - Parser ?v?nement Stripe",
-                                                                                  "type":  "main",
-                                                                                  "index":  0
-                                                                              }
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Code - Parser ?v?nement Stripe",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
                                                                           ]
                                                              }
                     },
@@ -611,9 +621,9 @@
     "staticData":  null,
     "meta":  null,
     "pinData":  null,
-    "versionId":  "6857ef9d-0588-4d36-a841-a470a9c454f0",
+    "versionId":  "89253cf9-12a1-4d3b-a4ed-f749790cef2a",
     "activeVersionId":  null,
-    "versionCounter":  8,
+    "versionCounter":  13,
     "triggerCount":  1,
     "shared":  [
                    {
