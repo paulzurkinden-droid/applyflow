@@ -115,7 +115,7 @@ curl -X POST https://p2urkinden.app.n8n.cloud/webhook/generate-lm \
 - **Status:** ✅ ACTIVE
 - **Trigger:** Stripe Webhook — `POST /webhook/stripe-applyflow`
 - **Webhook URL:** `https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow`
-- **Authentication:** Header Auth (Stripe webhook signing secret)
+- **Authentication:** HMAC-SHA256 signature verification via `Code - Verifier signature Stripe` node (BUG-006 fix). Secret stored in n8n env var `STRIPE_WEBHOOK_SECRET`.
 - **Purpose:**
   1. Receives Stripe events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
   2. On new subscription: creates/updates profil, invites user to Supabase Auth, sends welcome email
@@ -139,8 +139,11 @@ stripe listen --forward-to https://p2urkinden.app.n8n.cloud/webhook/stripe-apply
 
 ## Webhook URLs Summary
 
+> ⚠️ **Security note (BUG-009):** Webhook paths are secrets — regenerate any exposed webhook URL via n8n UI if this repo becomes public. Never commit raw webhook UUIDs to version control.
+
 | Workflow | Webhook URL |
 |----------|-------------|
+| WF-A Onboarding | `https://p2urkinden.app.n8n.cloud/webhook/[WF-A-WEBHOOK-PATH]` — regenerate if exposed |
 | WF-C Génération LM | `https://p2urkinden.app.n8n.cloud/webhook/generate-lm` |
 | WF-STRIPE Abonnements | `https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow` |
 

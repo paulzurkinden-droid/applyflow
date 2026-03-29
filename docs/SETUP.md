@@ -43,11 +43,11 @@ Log in to https://p2urkinden.app.n8n.cloud and configure these credentials:
 - **Purpose:** WF-C uses this to copy the LM template and create user documents
 - **Setup:** Follow n8n's Google OAuth2 setup → authorize with the Google account that owns the LM template
 
-### 1.4 Stripe Webhook Auth
-- **Type:** HTTP Header Auth
-- **Credential name:** "Header Auth account" (ID: l9fVHncLdNjJk6Gg)
-- **Used by:** WF-STRIPE to validate incoming Stripe webhooks
-- See `stripe/setup.md` for the signing secret
+### 1.4 Stripe Webhook Secret (HMAC verification)
+- **BUG-006 fix:** WF-STRIPE now uses proper HMAC-SHA256 signature verification
+- **NOT a credential** — set as n8n environment variable `STRIPE_WEBHOOK_SECRET`
+- Go to n8n Cloud > Settings > Environment Variables → add `STRIPE_WEBHOOK_SECRET` = `whsec_...`
+- See `stripe/setup.md` for full instructions
 
 ---
 
@@ -86,8 +86,8 @@ After running migrations, verify in Supabase:
 
 See [`stripe/setup.md`](../stripe/setup.md) for full Stripe configuration instructions.
 
-**Summary:**
-1. Create 3 products: Starter (9 CHF), Pro (19 CHF), Booster (39 CHF)
+**Summary (BUG-003: correct prices):**
+1. Create 3 products: Starter (9 CHF/mois), Pro (19 CHF/mois), Booster (39 CHF/mois)
 2. Add `plan` metadata to each price object
 3. Create Payment Links for each plan
 4. Configure webhook: `https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow`
@@ -142,6 +142,14 @@ ApplyFlow sends emails from the `@applyflow.ch` domain.
 To set n8n environment variables:
 1. Go to n8n Cloud > Settings > Environment Variables
 2. Add `SUPABASE_SERVICE_ROLE_KEY` = your service role key from Supabase
+
+---
+
+## 5b — Security Notes
+
+> ⚠️ **BUG-009:** Webhook paths are treated as secrets. Webhook UUIDs (e.g., WF-A onboarding path) have been redacted from this repo. If this repo becomes public, regenerate all webhook URLs via n8n UI (each webhook node > regenerate path).
+
+> ⚠️ **BUG-009:** The raw webhook path for WF-A (`f1fea724-...`) appears in `ApplyFlow_Passation_Projet.md` (main branch architecture doc). Regenerate this webhook URL if the repo becomes public.
 
 ---
 

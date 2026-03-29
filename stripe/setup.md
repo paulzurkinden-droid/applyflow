@@ -76,16 +76,20 @@ After creating the webhook:
 
 ---
 
-## Step 4 — Add Signing Secret to n8n
+## Step 4 — Add Signing Secret to n8n Environment Variables
 
-The WF-STRIPE webhook uses Header Auth for security. To configure:
+**BUG-006 fix applied:** WF-STRIPE now uses proper HMAC-SHA256 signature verification (not static header comparison).
 
-1. Go to **n8n > Credentials > "Header Auth account"** (ID: l9fVHncLdNjJk6Gg)
-2. Update with:
-   - **Header Name:** `Stripe-Signature`
-   - **Header Value:** `whsec_[your-signing-secret]`
+The `Code - Verifier signature Stripe` node reads the secret from the n8n environment variable `STRIPE_WEBHOOK_SECRET`.
 
-> **Alternative:** If you want to use Stripe's signature verification logic, update the `Code - Parser événement Stripe` node to verify `Stripe-Signature` header using the signing secret.
+1. Go to **n8n Cloud > Settings > Environment Variables**
+2. Add variable:
+   - **Key:** `STRIPE_WEBHOOK_SECRET`
+   - **Value:** `whsec_[your-signing-secret]`
+
+> ⚠️ If `STRIPE_WEBHOOK_SECRET` is not set, verification is skipped with a warning (to allow initial setup). Set it before going live.
+
+> ℹ️ The old "Header Auth account" credential (ID: `l9fVHncLdNjJk6Gg`) is no longer used for webhook auth and can be deleted.
 
 ---
 
