@@ -1,25 +1,24 @@
-import { redirectToCheckout } from '../lib/stripe';
+import { redirectToPaymentLink } from '../lib/stripe';
 
 const plans = [
   {
     name: 'Starter',
-    price: 'Gratuit',
-    period: '',
-    description: 'Pour commencer votre recherche d\'emploi avec l\'IA.',
+    price: 'CHF 9',
+    period: '/mois',
+    description: 'Pour démarrer votre recherche d\'emploi avec l\'IA.',
     features: [
       'Alertes emploi personnalisées',
       'Scoring IA des offres',
       'Jusqu\'à 10 offres par jour',
       'Digest email quotidien',
     ],
-    cta: 'Commencer gratuitement',
-    ctaType: 'link',
-    href: 'https://tally.so/r/b5kE41',
+    cta: 'Commencer pour CHF 9',
+    paymentLinkEnvKey: 'VITE_STRIPE_PAYMENT_LINK_STARTER',
     highlighted: false,
   },
   {
     name: 'Pro',
-    price: 'CHF 29',
+    price: 'CHF 19',
     period: '/mois',
     description: 'Pour les candidats sérieux qui veulent se démarquer.',
     badge: 'Populaire',
@@ -31,13 +30,12 @@ const plans = [
       'Stockage Google Drive',
     ],
     cta: 'Choisir Pro',
-    ctaType: 'stripe',
-    priceEnvKey: 'VITE_STRIPE_PRICE_PRO',
+    paymentLinkEnvKey: 'VITE_STRIPE_PAYMENT_LINK_PRO',
     highlighted: true,
   },
   {
     name: 'Booster',
-    price: 'CHF 79',
+    price: 'CHF 39',
     period: '/mois',
     description: 'Pour maximiser vos chances avec un accompagnement premium.',
     features: [
@@ -48,19 +46,21 @@ const plans = [
       'Accès anticipé aux nouvelles fonctions',
     ],
     cta: 'Choisir Booster',
-    ctaType: 'stripe',
-    priceEnvKey: 'VITE_STRIPE_PRICE_BOOSTER',
+    paymentLinkEnvKey: 'VITE_STRIPE_PAYMENT_LINK_BOOSTER',
     highlighted: false,
   },
 ];
 
+const paymentLinks = {
+  VITE_STRIPE_PAYMENT_LINK_STARTER: import.meta.env.VITE_STRIPE_PAYMENT_LINK_STARTER,
+  VITE_STRIPE_PAYMENT_LINK_PRO: import.meta.env.VITE_STRIPE_PAYMENT_LINK_PRO,
+  VITE_STRIPE_PAYMENT_LINK_BOOSTER: import.meta.env.VITE_STRIPE_PAYMENT_LINK_BOOSTER,
+};
+
 export default function Pricing() {
-  const handleStripeClick = (priceEnvKey) => {
-    const priceId =
-      priceEnvKey === 'VITE_STRIPE_PRICE_PRO'
-        ? import.meta.env.VITE_STRIPE_PRICE_PRO
-        : import.meta.env.VITE_STRIPE_PRICE_BOOSTER;
-    redirectToCheckout(priceId);
+  const handlePaymentClick = (plan) => {
+    const url = paymentLinks[plan.paymentLinkEnvKey];
+    redirectToPaymentLink(url);
   };
 
   return (
@@ -71,7 +71,7 @@ export default function Pricing() {
             Tarifs simples et transparents
           </h2>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-            Commencez gratuitement. Passez au niveau supérieur quand vous êtes prêt.
+            Commencez dès CHF 9/mois. Passez au niveau supérieur quand vous êtes prêt.
           </p>
         </div>
 
@@ -104,11 +104,9 @@ export default function Pricing() {
                 <span className={`text-4xl font-extrabold ${plan.highlighted ? 'text-white' : 'text-slate-900'}`}>
                   {plan.price}
                 </span>
-                {plan.period && (
-                  <span className={`text-lg ${plan.highlighted ? 'text-indigo-200' : 'text-slate-500'}`}>
-                    {plan.period}
-                  </span>
-                )}
+                <span className={`text-lg ${plan.highlighted ? 'text-indigo-200' : 'text-slate-500'}`}>
+                  {plan.period}
+                </span>
               </div>
 
               <p className={`text-sm mb-6 ${plan.highlighted ? 'text-indigo-100' : 'text-slate-500'}`}>
@@ -130,31 +128,16 @@ export default function Pricing() {
               </ul>
 
               {/* CTA */}
-              {plan.ctaType === 'link' ? (
-                <a
-                  href={plan.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block text-center px-6 py-3 rounded-full font-bold transition-colors ${
-                    plan.highlighted
-                      ? 'bg-white text-indigo-700 hover:bg-indigo-50'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {plan.cta}
-                </a>
-              ) : (
-                <button
-                  onClick={() => handleStripeClick(plan.priceEnvKey)}
-                  className={`w-full px-6 py-3 rounded-full font-bold transition-colors cursor-pointer ${
-                    plan.highlighted
-                      ? 'bg-white text-indigo-700 hover:bg-indigo-50'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {plan.cta}
-                </button>
-              )}
+              <button
+                onClick={() => handlePaymentClick(plan)}
+                className={`w-full px-6 py-3 rounded-full font-bold transition-colors cursor-pointer ${
+                  plan.highlighted
+                    ? 'bg-white text-indigo-700 hover:bg-indigo-50'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                {plan.cta}
+              </button>
             </div>
           ))}
         </div>
