@@ -1,260 +1,244 @@
 # BUGS.md — ApplyFlow
 
-**Date** : 2026-03-29
-**Reviewer** : QA Engineer
-**Total bugs** : 23 (6 CRITICAL · 7 HIGH · 7 MEDIUM · 3 LOW)
+**Date** : 2026-03-30 (Pass 2 — Re-audit post-fixes)
+**Pass 1 total** : 23 bugs (6 CRITICAL · 7 HIGH · 7 MEDIUM · 3 LOW)
+**Pass 2 total** : 16 bugs remaining + 5 new bugs introduced (7 CRITICAL · 5 HIGH · 6 MEDIUM · 3 LOW)
 
 ---
 
-## 🔴 CRITICAL — Bloquants production
+## BUGS CORRIGÉS DEPUIS PASS 1 ✅
+
+| Bug | Titre | Résolution |
+|---|---|---|
+| BUG-001 | API Stripe dépréciée | Migré vers Payment Links — stripe.js supprimé |
+| BUG-002 | Pas de try/catch checkout | `redirectToPaymentLink()` avec try/catch + alert |
+| BUG-003 | Prix incohérents (Gratuit/29/79) | Corrigé : CHF 9 / 19 / 39, aligné avec la doc |
+| BUG-004 | Page `/merci` inexistante | `Merci.jsx` créé + React Router configuré |
+| BUG-005 | WF-B : champ `lien` au lieu de `url` | Champ `url` unifié dans WF-B JSON |
+| BUG-007 | WF-B : `source: 'jobup.ch'` invalide | Corrigé en `source: 'Jobup'` |
+| BUG-010 | `priceId` undefined sans env vars | `redirectToPaymentLink` valide l'URL avant redirect |
 
 ---
 
-### BUG-001 · CRITICAL
-**Titre** : API Stripe `redirectToCheckout` dépréciée — peut échouer silencieusement
-**Fichier** : `landing/src/lib/stripe.js`, ligne 5–11
-**Description** : `stripe.redirectToCheckout({ lineItems, mode, successUrl, cancelUrl })` est l'ancienne méthode client-only de Stripe Checkout, dépréciée depuis 2022. Avec @stripe/stripe-js v9 (version utilisée ici), cette méthode est absente ou non documentée, et son comportement n'est pas garanti. Les clients peuvent être bloqués au moment du paiement.
-**Fix** : Migrer vers des **Stripe Payment Links** (URLs statiques créées dans le dashboard Stripe, intégrées comme simple `<a href>`) ou créer une Checkout Session côté backend et utiliser `stripe.redirectToCheckout({ sessionId })`.
+## 🔴 CRITICAL — Bloquants production (5 bugs actifs)
 
 ---
 
-### BUG-002 · CRITICAL
-**Titre** : Aucune gestion d'erreur sur le checkout Stripe — TypeError non catchée
-**Fichier** : `landing/src/lib/stripe.js`, ligne 5–11 · `landing/src/components/Pricing.jsx`, ligne 52
-**Description** : Si `stripePromise` résout à `null` (ad blocker, réseau, clé invalide), `stripe.redirectToCheckout(...)` lève une `TypeError: Cannot read properties of null`. Aucun `try/catch` ni `.catch()` n'est présent. L'utilisateur voit une page blanche ou une erreur console sans feedback.
+### BUG-006 · CRITICAL · NOT FIXED
+**Titre** : Vérification signature Stripe HMAC — toujours absente
+**Fichier** : `n8n/workflows/wf-stripe-abonnements.json` — node "Webhook - Stripe"
+**Description** : La configuration `authentication: headerAuth` avec la valeur statique `whsec_xxx` ne peut pas valider les signatures Stripe. Stripe génère un header `Stripe-Signature: t=timestamp,v1=HMAC_hash` unique par requête — une comparaison statique sera soit toujours vraie (sécurité nulle) soit toujours fausse (flux de paiement bloqué). `stripe/setup.md` reconnaît le problème dans une note mais l'implémentation HMAC n'a pas été faite.
 **Fix** :
 ```javascript
-export async function redirectToCheckout(priceId) {
-  try {
-    const stripe = await stripePromise;
-    if (!stripe) throw new Error('Stripe non chargé');
-    const { error } = await stripe.redirectToCheckout({ ... });
-    if (error) throw error;
-  } catch (err) {
-    console.error('[Stripe]', err);
-    alert('Une erreur est survenue. Veuillez réessayer ou contacter support@applyflow.ch');
-  }
-}
-```
-
----
-
-### BUG-003 · CRITICAL
-**Titre** : Prix incohérents entre le frontend et toute la documentation
-**Fichier** : `landing/src/components/Pricing.jsx`, lignes 3–44
-**Description** :
-- Starter : **Gratuit** dans le frontend vs **9 CHF/mois** dans toute la doc
-- Pro : **CHF 29/mois** dans le frontend vs **19 CHF/mois** dans toute la doc
-- Booster : **CHF 79/mois** dans le frontend vs **39 CHF/mois** dans toute la doc
-
-Trois incohérences en même temps. Soit le business model a changé (et la doc n'est pas à jour), soit le frontend est faux. En l'état, les Stripe Price IDs ne correspondent à aucun prix documenté.
-**Fix** : Aligner explicitement avec le product owner, puis corriger soit la doc soit le frontend.
-
----
-
-### BUG-004 · CRITICAL
-**Titre** : Page `/merci` (success_url Stripe) inexistante — 404 après paiement
-**Fichier** : `landing/src/lib/stripe.js`, ligne 9
-**Description** : `successUrl: window.location.origin + '/merci'` pointe vers une route non définie dans l'application React (application monopages sans routeur). L'utilisateur ayant payé atterrit sur une page vide ou 404 — pire expérience possible post-conversion.
-**Fix** : Soit créer un composant `Merci.jsx` avec React Router, soit utiliser une URL absolue externe (`https://applyflow.ch/merci`) sur un page dédiée, soit rediriger vers `/#merci` avec une section conditionnelle dans `App.jsx`.
-
----
-
-### BUG-005 · CRITICAL
-**Titre** : WF-B — Champ `lien` vs `url` : schema mismatch provoque des INSERT échoués
-**Fichier** : `ApplyFlow_Passation_Projet.md` section 7 (code node) vs `DATA_MODEL.md` table `offres_alertes`
-**Description** : Le format normalisé d'une offre dans la passation utilise `lien` comme clé du champ URL. La table Supabase et la contrainte UNIQUE utilisent `url`. Le Code node "Parser + normaliser offres" produira des objets avec `lien` mais le node Supabase attendra `url` → les inserts échouent en silencieux (onError=continueRegularOutput), aucune offre n'est jamais écrite.
-**Fix** : Uniformiser sur `url` dans tous les documents et dans le code des Code nodes.
-
----
-
-### BUG-006 · CRITICAL
-**Titre** : WF-B — Vérification signature Stripe documentée comme automatique — FAUSSE
-**Fichier** : `INTEGRATIONS.md`, section 1 "Vérification signature webhook dans n8n"
-**Description** : La documentation indique que n8n vérifie automatiquement la signature HMAC-SHA256 Stripe via "Header Auth". **C'est incorrect.** Le node Webhook n8n avec Header Auth compare simplement un header à une valeur statique, sans calcul HMAC. Sans vraie vérification de signature, n'importe qui peut envoyer de faux events Stripe (ex: `checkout.session.completed` fabriqué) → création de comptes frauduleux, modification de plans.
-**Fix** : Ajouter un Code node en tête de WF-STRIPE :
-```javascript
+// Premier Code node dans WF-STRIPE, avant tout autre traitement :
 const crypto = require('crypto');
-const sig = $input.first().headers['stripe-signature'];
-const payload = $input.first().rawBody; // nécessite Raw Body activé dans le webhook
-const secret = $credentials.stripeWebhookSecret;
-const [t, v1] = sig.split(',').map(p => p.split('=')[1]);
+const sigHeader = $input.first().headers['stripe-signature'] || '';
+const rawBody = $input.first().rawBody || JSON.stringify($input.first().json);
+const secret = $env['STRIPE_WEBHOOK_SECRET']; // whsec_xxx dans n8n env vars
+const parts = Object.fromEntries(sigHeader.split(',').map(p => p.split('=')));
 const expected = crypto.createHmac('sha256', secret)
-  .update(`${t}.${payload}`).digest('hex');
-if (expected !== v1) throw new Error('Invalid Stripe signature');
+  .update(`${parts.t}.${rawBody}`).digest('hex');
+if (expected !== parts.v1) throw new Error('Invalid Stripe signature — request rejected');
+```
+Note : activer "Raw Body" dans les options du Webhook node n8n.
+
+---
+
+### BUG-N001 · CRITICAL · NEW
+**Titre** : `{{RESEND_API_KEY}}` hardcodé — toutes les lignes d'email sont cassées
+**Fichiers** :
+- `n8n/workflows/wf-stripe-abonnements.json` : "HTTP - Email bienvenue Resend" + "HTTP - Email résiliation Resend"
+- `n8n/workflows/wf-b-alertes-offres.json` : "HTTP - Envoyer alerte Resend"
+- `n8n/workflows/wf-c-generation-lm.json` : "HTTP - Envoyer LM Resend"
+
+**Description** : Tous les nodes HTTP Resend dans les 3 workflows utilisent :
+```json
+{ "name": "Authorization", "value": "Bearer {{RESEND_API_KEY}}" }
+```
+`{{RESEND_API_KEY}}` est une chaîne litérale — pas une expression n8n valide. L'API Resend reçoit `Authorization: Bearer {{RESEND_API_KEY}}` → 401 Unauthorized. **Aucun email ne sera jamais envoyé** : ni bienvenue, ni alerte emploi, ni livraison LM, ni résiliation. L'ensemble des communications utilisateurs est silencieusement cassé.
+**Fix** :
+```
+Option 1 (recommandée) : Créer un credential n8n "Header Auth" avec clé Resend
+→ l'associer à chaque HTTP Request node via "Authentication: predefined credential"
+
+Option 2 : Ajouter RESEND_API_KEY aux Environment Variables n8n
+→ remplacer la value par : Bearer {{ $env['RESEND_API_KEY'] }}
 ```
 
 ---
 
-## 🟠 HIGH — Importants, à corriger avant lancement
+### BUG-N002 · CRITICAL · NEW
+**Titre** : `{{SUPABASE_SERVICE_ROLE_KEY}}` hardcodé — invitation utilisateur Supabase Auth cassée
+**Fichier** : `n8n/workflows/wf-stripe-abonnements.json` — node "HTTP - Inviter utilisateur Supabase Auth"
+**Description** : L'appel à `https://yltajummrsorqvynvod.supabase.co/auth/v1/admin/users` pour créer/inviter l'utilisateur après paiement utilise la chaîne litérale `{{SUPABASE_SERVICE_ROLE_KEY}}` dans les headers `apikey` et `Authorization`. Supabase retournera 401 → aucun compte Auth n'est créé → aucun email d'invitation → l'utilisateur ne peut pas se connecter → le trigger `link_auth_user_to_profile` ne s'exécute jamais → le profil reste sans `user_id` → la RLS bloque tout accès au profil.
+**Fix** : Utiliser le credential Supabase existant ("Supabase account" ID: `8KEISLMo2kUMmv86`) ou configurer les clés dans les env vars n8n et utiliser `$env['SUPABASE_SERVICE_ROLE_KEY']`.
 
 ---
 
-### BUG-007 · HIGH
-**Titre** : WF-B — Valeur `source: 'jobup.ch'` viole la contrainte CHECK Supabase
-**Fichier** : `ApplyFlow_Passation_Projet.md` section 7, code node (format normalisé)
-**Description** : `source: 'jobup.ch'` ne fait pas partie de `CHECK (source IN ('Adzuna', 'Confederation', 'Jobup'))`. Chaque tentative d'INSERT d'une offre Jobup sera rejetée par la contrainte DB avec une erreur PostgreSQL. Avec `onError=continueRegularOutput`, ces erreurs sont silencieuses — toutes les offres Jobup.ch sont perdues.
-**Fix** : Corriger en `source: 'Jobup'` dans le Code node "Parser + normaliser offres".
-
----
-
-### BUG-008 · HIGH
-**Titre** : WF-B — Credentials Adzuna en dur comme placeholders invalides
-**Fichier** : `WORKFLOWS.md` section "Code node Construire URLs" + `ApplyFlow_Passation_Projet.md` section 11
-**Description** : `const APP_ID = '{{ADZUNA_APP_ID}}'` — les doubles accolades ne sont pas la syntaxe n8n pour les credentials. Le code n8n utilise `$credentials.xxx` ou des variables d'environnement n8n. En l'état, toutes les requêtes Adzuna seront authentifiées avec la chaîne littérale `{{ADZUNA_APP_ID}}` → 401 Unauthorized.
-**Fix** : Dans n8n, stocker les clés Adzuna dans des Custom Credentials et les référencer via `{{ $credentials.adzunaAppId }}`, ou passer les clés via n8n Variables.
-
----
-
-### BUG-009 · HIGH
-**Titre** : WF-A — URL webhook n8n exposée dans un repo GitHub public
-**Fichier** : `ApplyFlow_Passation_Projet.md`, section 5
-**Description** : `https://p2urkinden.app.n8n.cloud/webhook/f1fea724-e392-473d-963a-49cf3207f5cf` est publiquement visible. Toute personne peut envoyer un POST à cette URL et créer/modifier des profils utilisateurs dans Supabase.
-**Fix** : Ajouter la vérification de signature Tally dans WF-A. Envisager de régénérer l'URL webhook (invalidant l'ancienne). Supprimer l'URL des documents publics ou les mettre dans un vault.
-
----
-
-### BUG-010 · HIGH
-**Titre** : `priceId` peut être `undefined` si les variables d'environnement sont absentes
-**Fichier** : `landing/src/components/Pricing.jsx`, ligne 52–56
-**Description** : Si `VITE_STRIPE_PRICE_PRO` ou `VITE_STRIPE_PRICE_BOOSTER` ne sont pas définies dans `.env` (déploiement Vercel/Netlify sans configuration des variables), les `import.meta.env` retournent `undefined`. `redirectToCheckout(undefined)` ne lève pas d'erreur immédiate mais peut provoquer un comportement Stripe inattendu.
-**Fix** :
+### BUG-N003 · CRITICAL · NEW
+**Titre** : WF-C — Aucune vérification du plan utilisateur (bypass accès Pro/Booster)
+**Fichier** : `n8n/workflows/wf-c-generation-lm.json` — Code node "Valider requête" + structure des nodes
+**Description** : Le Code node de validation vérifie la présence de `user_id`, `titre_poste`, `entreprise`, `description_offre` mais **ne vérifie pas** le plan de l'utilisateur. N'importe quel utilisateur `starter` connaissant l'URL du webhook peut générer des LM illimitées, contournant complètement la restriction Pro/Booster. Les appels Claude et Google Drive seront quand même exécutés et facturés.
+**Fix** : Ajouter après le node "Supabase - Récupérer profil" :
 ```javascript
-const priceId = plan.priceEnvKey === 'VITE_STRIPE_PRICE_PRO'
-  ? import.meta.env.VITE_STRIPE_PRICE_PRO
-  : import.meta.env.VITE_STRIPE_PRICE_BOOSTER;
-if (!priceId) {
-  console.error('Price ID manquant pour', plan.priceEnvKey);
-  alert('Configuration manquante. Contactez support@applyflow.ch');
-  return;
+// IF node ou Code node
+const profil = $('Supabase - Récupérer profil').item.json;
+if (!profil || !profil.actif) {
+  // Respond 401 : profil inactif ou introuvable
+}
+if (!['pro', 'booster'].includes(profil.plan)) {
+  // Respond 403 PLAN_INSUFFICIENT
 }
 ```
 
 ---
 
-### BUG-011 · HIGH
-**Titre** : WF-B — Email digest envoyé par offre et non par utilisateur (spam potentiel)
-**Fichier** : `WORKFLOWS.md` section WF-B, steps [15]→[17]→[19]
-**Description** : Le workflow éclate les offres en items individuels au step [15], puis filtre celles avec score ≥ 7 au step [17], puis envoie un email par item au step [19]. Un utilisateur avec 5 offres bien scorées reçoit 5 emails distincts dans la même minute, au lieu d'un seul digest. Mauvaise expérience utilisateur et risque de marquage spam.
-**Fix** : Ajouter un Code node de regroupement entre [17] et [19] qui agrège les offres par `user_id` avant d'appeler Resend une seule fois par utilisateur.
+## 🟠 HIGH — Importants avant lancement (5 bugs actifs)
 
 ---
 
-### BUG-012 · HIGH
-**Titre** : Profils WF-A sans `user_id` → RLS empêche l'accès utilisateur
-**Fichier** : `DATA_MODEL.md` (RLS policies) + `ApplyFlow_Passation_Projet.md` section 6
-**Description** : WF-A crée des profils avec `user_id = NULL`. La politique RLS `auth.uid() = user_id` ne matchera jamais `NULL` → les utilisateurs ne peuvent pas lire leur propre profil via l'API REST Supabase. Sans WF-STRIPE pour faire l'invite Supabase Auth et sans le trigger `link_auth_user_to_profile`, les profils sont orphelins.
-**Fix** : Déployer WF-STRIPE en priorité. S'assurer que le trigger `on_auth_user_created` est bien actif en production. Ajouter une vérification dans WF-A : si le user existe déjà dans `auth.users`, lier directement.
+### BUG-008 · HIGH · PARTIAL FIX
+**Titre** : Credentials Adzuna — fallback sur placeholder invalide si env vars absentes
+**Fichier** : `n8n/workflows/wf-b-alertes-offres.json` — Code node "Construire URLs"
+**Description** : Le code utilise maintenant `$env['ADZUNA_APP_ID'] || '{{ADZUNA_APP_ID}}'`. La première branche est correcte, mais le fallback `'{{ADZUNA_APP_ID}}'` est une chaîne litérale invalide. Si les variables d'environnement ne sont pas configurées dans n8n → toutes les requêtes Adzuna échouent silencieusement (401) sans aucune alerte. Aucune validation ni log d'erreur explicite n'est implémenté.
+**Fix** :
+```javascript
+const APP_ID = $env['ADZUNA_APP_ID'];
+const APP_KEY = $env['ADZUNA_APP_KEY'];
+if (!APP_ID || !APP_KEY) {
+  throw new Error('ADZUNA_APP_ID ou ADZUNA_APP_KEY non configurés dans les env vars n8n');
+}
+```
 
 ---
 
-### BUG-013 · HIGH
-**Titre** : Pas de mentions légales ni politique de confidentialité — non-conformité LPD/RGPD
-**Fichier** : `landing/src/App.jsx`, tous composants
-**Description** : Le site collecte des emails (formulaire Tally), traite des données personnelles (profils, CV, candidatures) et vend des abonnements. La LPD suisse (en vigueur depuis 09/2023) et le RGPD européen (applicable aux résidents EU utilisant le service) exigent une politique de confidentialité accessible depuis toutes les pages.
-**Fix** : Créer `/politique-confidentialite` et `/cgv`. Ajouter un lien dans le Footer. Mentionner : données collectées, durée de rétention, droits des utilisateurs, DPO contact.
+### BUG-009 · HIGH · UNCHANGED
+**Titre** : URL webhook Tally n8n WF-A exposée dans repo GitHub public
+**Fichiers** : `ApplyFlow_Passation_Projet.md`, `ARCHITECTURE.md`
+**Description** : L'URL `https://p2urkinden.app.n8n.cloud/webhook/f1fea724-e392-473d-963a-49cf3207f5cf` est visible publiquement. Sans vérification de signature Tally côté WF-A, quiconque peut POSTer des données fictives et créer/écraser des profils utilisateurs en Supabase.
+**Fix** : Activer la signature webhook Tally (Settings Tally → Webhook → Signing Secret) et ajouter une vérification HMAC dans WF-A. Régénérer l'URL webhook n8n si possible. Supprimer l'URL des fichiers Markdown publics.
 
 ---
 
-## 🟡 MEDIUM — À corriger avant croissance
+### BUG-011 · HIGH · NOT FIXED
+**Titre** : WF-B — Email digest envoyé par offre (pas par utilisateur)
+**Fichier** : `n8n/workflows/wf-b-alertes-offres.json` — Code node "Préparer email alerte"
+**Description** : Le Code node prépare un email pour une offre individuelle (`$('Code - Éclater offres').item.json`) avec pour sujet `?? Nouvelle offre pertinente : ${offre.titre}`. Si 5 offres sont scorées ≥ 7, l'utilisateur reçoit 5 emails séparés dans la même minute. Risque de marquage spam + très mauvaise UX.
+**Fix** : Ajouter un node "Merge / Group by user" entre "Code - Éclater offres" et "Préparer email alerte" pour agréger toutes les offres ≥ 7 d'un même utilisateur en un seul email digest.
 
 ---
 
-### BUG-014 · MEDIUM
-**Titre** : Favicon pointe vers `/vite.svg` au lieu de `/favicon.svg`
+### BUG-013 · HIGH · NOT FIXED
+**Titre** : Pas de mentions légales ni politique de confidentialité (non-conformité LPD suisse)
+**Fichiers** : `landing/src/components/Footer.jsx`, `landing/src/App.jsx`
+**Description** : Aucun lien vers CGU, politique de confidentialité ou mentions légales dans le footer ou l'application. La LPD suisse (en vigueur depuis sept. 2023) exige une politique de confidentialité accessible. Le RGPD s'applique pour les utilisateurs résidant en Europe.
+**Fix** :
+1. Créer `landing/src/components/Confidentialite.jsx` et `Cgu.jsx`
+2. Ajouter les routes `/confidentialite` et `/cgv` dans `App.jsx`
+3. Ajouter les liens dans `Footer.jsx`
+4. Contenu minimum : données collectées, finalité, durée conservation, droits (accès, suppression, rectification), contact DPO
+
+---
+
+### BUG-N005 · HIGH · NEW
+**Titre** : Stripe success_url dans setup.md pointe vers `/welcome` — route inexistante
+**Fichiers** : `stripe/setup.md` (Step 2) vs `landing/src/App.jsx`
+**Description** : `stripe/setup.md` indique de configurer `https://applyflow.ch/welcome?session_id={CHECKOUT_SESSION_ID}` comme success URL des Payment Links. La route `/welcome` n'existe pas dans le frontend React (seule `/merci` est définie). Si les Payment Links sont configurés selon la documentation, l'utilisateur atterrit sur une page 404 après paiement.
+**Fix** : Mettre à jour `stripe/setup.md` Step 2 pour utiliser `https://applyflow.ch/merci` comme success URL. (Ou créer la route `/welcome` si le nom `/merci` doit changer.)
+
+---
+
+## 🟡 MEDIUM — À corriger avant croissance (6 bugs actifs)
+
+---
+
+### BUG-014 · MEDIUM · NOT FIXED
+**Titre** : Favicon pointe vers `/vite.svg` (icône Vite par défaut)
 **Fichier** : `landing/index.html`, ligne 4
-**Description** : `<link rel="icon" type="image/svg+xml" href="/vite.svg" />` utilise l'icône Vite par défaut. `/public/favicon.svg` existe et contient l'icône ApplyFlow.
 **Fix** : `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`
 
 ---
 
-### BUG-015 · MEDIUM
-**Titre** : Open Graph sans og:image — mauvais rendu partage social
-**Fichier** : `landing/index.html`, lignes 9–18
-**Description** : Absence de `og:image` et `twitter:image`. Tous les partages sur WhatsApp, LinkedIn, Twitter/X, Slack afficheront une boîte vide à la place d'une preview visuelle. Impact direct sur le taux de conversion des partages.
-**Fix** : Ajouter `/public/og-image.png` (1200×630px) et les meta tags correspondants.
+### BUG-015 · MEDIUM · NOT FIXED
+**Titre** : `og:image` et `twitter:image` absents — mauvais rendu partage social
+**Fichier** : `landing/index.html`
+**Fix** : Créer `public/og-image.png` (1200×630) et ajouter :
+```html
+<meta property="og:image" content="https://applyflow.ch/og-image.png" />
+<meta name="twitter:image" content="https://applyflow.ch/og-image.png" />
+```
 
 ---
 
-### BUG-016 · MEDIUM
-**Titre** : WF-B — `annees_exp` non stocké dans Supabase `profils`
-**Fichier** : `DATA_MODEL.md` (schéma profils) + `WORKFLOWS.md` WF-B prompt scoring
-**Description** : Le champ `annees_exp` est collecté dans Tally et utilisé dans le prompt de scoring Claude, mais n'est pas défini comme colonne dans la table `profils`. WF-A extrait la valeur mais n'a nulle part où l'écrire. WF-B tente de le lire depuis Supabase → `undefined` dans le prompt.
-**Fix** : Ajouter `annees_exp INTEGER DEFAULT 0` à la table `profils`. Mettre à jour WF-A pour l'écrire. Ajouter à la Migration 001.
+### BUG-016 · MEDIUM · WORKAROUND ONLY
+**Titre** : `annees_exp` non stocké dans Supabase — WF-B utilise valeur hardcodée
+**Fichier** : `n8n/workflows/wf-b-alertes-offres.json` — Code node "Construire URLs"
+**Description** : `annees_exp: profil.cv_texte ? 5 : 0` est un contournement non représentatif. La colonne `annees_exp` n'existe pas dans la table `profils` (absent de la migration 001). La valeur réelle collectée via Tally n'est pas persistée.
+**Fix** : Ajouter `annees_exp INTEGER DEFAULT 0` à la migration 001 (ou une migration 003). Mettre à jour WF-A pour écrire cette valeur. Mettre à jour WF-B pour la lire depuis `profil.annees_exp`.
 
 ---
 
-### BUG-017 · MEDIUM
-**Titre** : Race condition sur INSERT profil — double soumission Tally
-**Fichier** : `ApplyFlow_Passation_Projet.md` section 6 (structure WF-A)
-**Description** : Le workflow fait SELECT → IF (existe ?) → INSERT ou UPDATE, sans transaction. Si un utilisateur soumet deux fois le formulaire rapidement, les deux exécutions peuvent passer le SELECT (email non encore committé), puis tenter deux INSERTs → violation de contrainte UNIQUE sur `email` → une des deux exécutions échoue.
-**Fix** : Utiliser `UPSERT` (Insert + onConflict=email → update) au lieu de SELECT+IF. Le node Supabase n8n supporte le mode "Upsert".
-
----
-
-### BUG-018 · MEDIUM
+### BUG-018 · MEDIUM · NOT FIXED
 **Titre** : Fonction SECURITY DEFINER sans `SET search_path` — vulnérabilité PostgreSQL
-**Fichier** : `INTEGRATIONS.md` section 6, `DATA_MODEL.md` section trigger
-**Description** : Sans `SET search_path = public, pg_catalog`, un attaquant avec accès à la DB pourrait créer un objet malveillant dans un schéma qui precède `public` dans le search_path et faire exécuter du code arbitraire par la fonction SECURITY DEFINER.
-**Fix** : `$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_catalog;`
+**Fichier** : `supabase/migrations/001_initial_schema.sql` — fonction `link_auth_user_to_profile()`
+**Fix** :
+```sql
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_catalog;
+```
 
 ---
 
-### BUG-019 · MEDIUM
-**Titre** : Trigger `updated_at` manquant sur `preferences_recherche`
-**Fichier** : `DATA_MODEL.md` section "Trigger updated_at automatique"
-**Description** : Les triggers `set_updated_at` sont définis pour `profils` et `candidatures` mais pas pour `preferences_recherche`. Le champ `updated_at` existe sur la table mais ne sera jamais mis à jour automatiquement.
-**Fix** : Ajouter `CREATE TRIGGER set_updated_at_preferences BEFORE UPDATE ON preferences_recherche FOR EACH ROW EXECUTE FUNCTION update_updated_at();`
-
----
-
-### BUG-020 · MEDIUM
+### BUG-020 · MEDIUM · NOT FIXED
 **Titre** : Claim "200+ chercheurs d'emploi" possiblement faux — risque LCD suisse
 **Fichier** : `landing/src/components/Hero.jsx`, ligne 13
-**Description** : Si le service vient d'être lancé et n'a pas encore 200 utilisateurs, ce badge social proof constitue une indication fausse sur la popularité du service, potentiellement déloyale sous l'art. 3 LCD.
-**Fix** : Retirer ou remplacer par un chiffre vérifiable. Utiliser "Rejoignez les premiers chercheurs d'emploi en Suisse romande" si en phase beta.
+**Fix** : Remplacer par un claim vérifiable ou neutre. Ex : "Les premiers chercheurs d'emploi en Suisse romande ont testé ApplyFlow" ou simplement retirer le badge de social proof.
 
 ---
 
-## 🔵 LOW — Qualité et maintenabilité
+### BUG-N004 · MEDIUM · NEW
+**Titre** : Dépendance `@stripe/stripe-js` inutile dans `package.json`
+**Fichier** : `landing/package.json`
+**Description** : La migration vers Payment Links a supprimé toute utilisation du SDK `@stripe/stripe-js`, mais la dépendance est toujours dans `dependencies`. Charge ~40 KB gzippé inutilement.
+**Fix** : `npm uninstall @stripe/stripe-js` — retirer de `package.json` et `package-lock.json`.
 
 ---
 
-### BUG-021 · LOW
-**Titre** : Pas d'export JSON des workflows n8n dans le repo
-**Description** : WF-A est le seul workflow fonctionnel et n'est pas versionné. Si le compte n8n Cloud est perdu, WF-A est irrécupérable.
-**Fix** : Exporter tous les workflows depuis n8n (Settings → Download) et les committer dans `n8n-workflows/wf-a-onboarding.json`, etc.
+## 🔵 LOW — Qualité et maintenabilité (3 bugs inchangés)
 
 ---
 
-### BUG-022 · LOW
-**Titre** : Contradiction architecture : DECISIONS.md dit Framer, le code implémente Vite+React
-**Fichier** : `DECISIONS.md` D-004 vs branche `frontend`
-**Description** : La documentation de décision recommande Framer mais le code réel est Vite+React. Pas un bug fonctionnel mais une confusion pour les futurs développeurs.
-**Fix** : Mettre à jour DECISIONS.md D-004 pour documenter le changement de stack et la justification.
+### BUG-021 · LOW · PARTIALLY FIXED
+**Titre** : Workflows n8n exportés dans `backend` branch mais pas dans `main`
+**Description** : Les 4 JSON de workflows sont dans la branche `backend`. Bien, mais aucun n'a été fusionné vers `main`. Si `backend` est supprimé ou oublié, les JSONs sont perdus.
+**Fix** : Fusionner la branche `backend` dans `main` ou créer un processus de sync.
 
 ---
 
-### BUG-023 · LOW
+### BUG-022 · LOW · UNCHANGED
+**Titre** : Contradiction architecture : DECISIONS.md dit Framer, le code est Vite+React
+**Fichier** : `DECISIONS.md` D-004
+**Fix** : Mettre à jour D-004 pour documenter la décision de construire une landing React personnalisée et la justification.
+
+---
+
+### BUG-023 · LOW · UNCHANGED
 **Titre** : `landing/src/App.css` — styles globaux potentiellement conflictuels avec Tailwind v4
-**Fichier** : `landing/src/App.css`
-**Description** : L'application utilise TailwindCSS v4 (via `@tailwindcss/vite`) mais `App.css` contient des styles CSS globaux. Avec Tailwind v4, le fichier CSS de base est généré automatiquement — les styles dans `App.css` peuvent créer des conflits ou des surcharges inattendues.
-**Fix** : Vérifier qu'`App.css` ne définit que des custom properties CSS (`:root { --xxx }`) et n'override pas les utilitaires Tailwind.
+**Fix** : Vérifier que App.css ne définit que des custom properties CSS (`:root { }`) et n'override pas les utilitaires Tailwind.
 
 ---
 
-## RÉCAPITULATIF
+## RÉCAPITULATIF PASS 2
 
-| Sévérité | Nombre | Bugs |
-|---|---|---|
-| 🔴 CRITICAL | 6 | BUG-001 à BUG-006 |
-| 🟠 HIGH | 7 | BUG-007 à BUG-013 |
-| 🟡 MEDIUM | 7 | BUG-014 à BUG-020 |
-| 🔵 LOW | 3 | BUG-021 à BUG-023 |
-| **TOTAL** | **23** | |
+| Sévérité | Pass 1 | Corrigés | Nouveaux | Total actif |
+|---|---|---|---|---|
+| 🔴 CRITICAL | 6 | 4 (BUG-001/002/003/004) | 3 (N001/N002/N003) | **5** |
+| 🟠 HIGH | 7 | 3 (BUG-005/007/010) | 1 (N005) | **5** |
+| 🟡 MEDIUM | 7 | 2 (BUG-017/019) | 1 (N004) | **6** |
+| 🔵 LOW | 3 | 0 | 0 | **3** |
+| **TOTAL** | **23** | **9** | **5** | **19** |
 
 ---
 
 ```json
-{"approved": false, "critical_bugs": 6, "summary": "ApplyFlow ne peut pas aller en production dans son état actuel. 6 bugs critiques bloquent le lancement : API Stripe dépréciée sans gestion d'erreur, prix incohérents entre frontend et documentation (Starter gratuit vs 9 CHF, Pro 29 vs 19 CHF, Booster 79 vs 39 CHF), page /merci post-paiement inexistante (404 après checkout), schema mismatch champ lien/url dans WF-B qui fait échouer tous les inserts d'offres emploi, et vérification signature Stripe documentée comme automatique alors qu'elle ne l'est pas (faille de sécurité majeure). De plus, les workflows WF-STRIPE, WF-C, WF-D et Resend ne sont pas encore construits/configurés, rendant le produit non vendable. 7 bugs HIGH doivent être résolus avant la première cohorte d'utilisateurs."}
+{"approved": false, "critical_bugs": 5, "summary": "Pass 2 : 9 bugs corrigés sur 23 (BUG-001 à BUG-005, BUG-007, BUG-010 — frontend entièrement fixé). Mais 3 nouveaux critiques introduits dans la branche backend : {{RESEND_API_KEY}} littéral dans 6 nodes HTTP (toutes les lignes d'email cassées), {{SUPABASE_SERVICE_ROLE_KEY}} littéral (invitation Auth cassée après paiement), et absence totale de vérification de plan dans WF-C (bypass Pro/Booster). BUG-006 (signature Stripe HMAC) non résolu. Non approuvé."}
 ```
