@@ -30,12 +30,10 @@ export default function Hero() {
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="https://tally.so/r/b5kE41"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#tarifs"
             className="bg-white text-indigo-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-indigo-50 transition-colors shadow-xl"
           >
-            Commencer gratuitement &rarr;
+            Découvrir nos offres &rarr;
           </a>
           <a
             href="#comment-ca-marche"
@@ -49,7 +47,7 @@ export default function Hero() {
         <div className="mt-12 flex flex-wrap justify-center gap-6 text-indigo-200 text-sm">
           <div className="flex items-center gap-2">
             <span>&#10003;</span>
-            <span>Sans carte bancaire</span>
+            <span>Abonnement sans engagement</span>
           </div>
           <div className="flex items-center gap-2">
             <span>&#127464;&#127469;</span>
