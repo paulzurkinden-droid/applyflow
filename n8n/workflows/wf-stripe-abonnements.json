@@ -1,10 +1,10 @@
-﻿{
-    "updatedAt":  "2026-03-29T22:47:02.725Z",
+{
+    "updatedAt":  "2026-03-30T11:14:51.654Z",
     "createdAt":  "2026-03-29T20:35:26.438Z",
     "id":  "Sp9T1mGtUkjQy9Sn",
     "name":  "WF-STRIPE - Gestion Abonnements",
     "description":  null,
-    "active":  false,
+    "active":  true,
     "isArchived":  false,
     "nodes":  [
                   {
@@ -469,7 +469,7 @@
                                        300
                                    ],
                       "parameters":  {
-                                         "jsCode":  "// BUG-006: Stripe HMAC signature verification using Web Crypto API\nconst sigHeader = $input.first().headers[\u0027stripe-signature\u0027] || \u0027\u0027;\nconst rawBody = $input.first().json.rawBody || JSON.stringify($input.first().json.body || $input.first().json);\n\n// Parse stripe-signature header: t=timestamp,v1=hash\nconst parts = {};\nsigHeader.split(\u0027,\u0027).forEach(part =\u003e {\n  const [k, v] = part.split(\u0027=\u0027);\n  if (k \u0026\u0026 v) parts[k] = v;\n});\n\nconst timestamp = parts[\u0027t\u0027];\nconst v1 = parts[\u0027v1\u0027];\n\nif (!timestamp || !v1) {\n  throw new Error(\u0027Stripe signature header missing or malformed\u0027);\n}\n\n// Reconstruct signed payload\nconst signedPayload = `${timestamp}.${rawBody}`;\n\n// Get secret from env - must be configured in n8n Cloud env vars as STRIPE_WEBHOOK_SECRET\nconst secret = $env[\u0027STRIPE_WEBHOOK_SECRET\u0027] || \u0027\u0027;\nif (!secret) {\n  // If secret not configured yet, log warning but continue (allows setup without blocking)\n  console.warn(\u0027[WF-STRIPE] STRIPE_WEBHOOK_SECRET not configured - skipping signature verification\u0027);\n  return $input.all();\n}\n\n// Web Crypto HMAC-SHA256 (available in n8n Cloud sandbox)\nconst encoder = new TextEncoder();\nconst keyData = encoder.encode(secret);\nconst messageData = encoder.encode(signedPayload);\n\nconst cryptoKey = await crypto.subtle.importKey(\n  \u0027raw\u0027, keyData, { name: \u0027HMAC\u0027, hash: \u0027SHA-256\u0027 }, false, [\u0027sign\u0027]\n);\nconst signature = await crypto.subtle.sign(\u0027HMAC\u0027, cryptoKey, messageData);\n\n// Convert to hex\nconst hashArray = Array.from(new Uint8Array(signature));\nconst expected = hashArray.map(b =\u003e b.toString(16).padStart(2, \u00270\u0027)).join(\u0027\u0027);\n\n// Check timestamp freshness (300 second tolerance)\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - parseInt(timestamp)) \u003e 300) {\n  throw new Error(\u0027Stripe webhook timestamp too old - replay attack?\u0027);\n}\n\nif (expected !== v1) {\n  throw new Error(\u0027Invalid Stripe signature\u0027);\n}\n\nreturn $input.all();",
+                                         "jsCode":  "// BUG-006: Stripe HMAC-SHA256 signature verification\n// NOTE: require(\u0027crypto\u0027) is BLOCKED on n8n Cloud - using Web Crypto API instead\n// Reference: https://docs.n8n.io/code/builtin/n8n-builtin-variables/\nconst sigHeader = $input.first().headers[\u0027stripe-signature\u0027] || \u0027\u0027;\nconst rawBody = $input.first().json.rawBody || JSON.stringify($input.first().json.body || $input.first().json);\n\n// Parse stripe-signature header: t=timestamp,v1=hmac\nconst parts = {};\nsigHeader.split(\u0027,\u0027).forEach(part =\u003e {\n  const eq = part.indexOf(\u0027=\u0027);\n  if (eq \u003e 0) parts[part.substring(0, eq)] = part.substring(eq + 1);\n});\n\nconst timestamp = parts[\u0027t\u0027];\nconst v1 = parts[\u0027v1\u0027];\n\nif (!timestamp || !v1) {\n  throw new Error(\u0027Stripe-Signature header missing or malformed\u0027);\n}\n\nconst secret = $env[\u0027STRIPE_WEBHOOK_SECRET\u0027] || \u0027\u0027;\nif (!secret) {\n  // Soft fail during initial setup - MUST be set before go-live\n  console.warn(\u0027[WF-STRIPE] STRIPE_WEBHOOK_SECRET not configured - skipping HMAC verification\u0027);\n  return $input.all();\n}\n\n// Reconstruct the signed payload exactly as Stripe does\nconst signedPayload = `${timestamp}.${rawBody}`;\n\n// HMAC-SHA256 via Web Crypto API (available in n8n Cloud sandbox)\nconst encoder = new TextEncoder();\nconst cryptoKey = await crypto.subtle.importKey(\n  \u0027raw\u0027, encoder.encode(secret),\n  { name: \u0027HMAC\u0027, hash: \u0027SHA-256\u0027 }, false, [\u0027sign\u0027]\n);\nconst sig = await crypto.subtle.sign(\u0027HMAC\u0027, cryptoKey, encoder.encode(signedPayload));\nconst expected = Array.from(new Uint8Array(sig)).map(b =\u003e b.toString(16).padStart(2, \u00270\u0027)).join(\u0027\u0027);\n\n// Replay attack guard: reject events older than 5 minutes\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - parseInt(timestamp, 10)) \u003e 300) {\n  throw new Error(\u0027Stripe webhook timestamp too old - possible replay attack\u0027);\n}\n\nif (expected !== v1) {\n  throw new Error(\u0027Invalid Stripe signature - request rejected\u0027);\n}\n\nreturn $input.all();",
                                          "mode":  "runOnceForAllItems"
                                      }
                   }
@@ -621,9 +621,9 @@
     "staticData":  null,
     "meta":  null,
     "pinData":  null,
-    "versionId":  "89253cf9-12a1-4d3b-a4ed-f749790cef2a",
-    "activeVersionId":  null,
-    "versionCounter":  13,
+    "versionId":  "f87cb1ca-6ee3-48ed-8c1f-1dbce39c8033",
+    "activeVersionId":  "f87cb1ca-6ee3-48ed-8c1f-1dbce39c8033",
+    "versionCounter":  16,
     "triggerCount":  1,
     "shared":  [
                    {
@@ -681,5 +681,618 @@
     "tags":  [
 
              ],
-    "activeVersion":  null
+    "activeVersion":  {
+                          "updatedAt":  "2026-03-30T11:14:51.663Z",
+                          "createdAt":  "2026-03-30T11:14:51.663Z",
+                          "versionId":  "f87cb1ca-6ee3-48ed-8c1f-1dbce39c8033",
+                          "workflowId":  "Sp9T1mGtUkjQy9Sn",
+                          "nodes":  [
+                                        {
+                                            "parameters":  {
+                                                               "httpMethod":  "POST",
+                                                               "path":  "stripe-applyflow",
+                                                               "responseMode":  "responseNode",
+                                                               "authentication":  "none",
+                                                               "options":  {
+                                                                               "rawBody":  true
+                                                                           }
+                                                           },
+                                            "id":  "8b2bc480-fd99-4dd8-bb8e-c6459f2bb4ca",
+                                            "type":  "n8n-nodes-base.webhook",
+                                            "webhookId":  "stripe-applyflow",
+                                            "name":  "Webhook - Stripe",
+                                            "position":  [
+                                                             240,
+                                                             300
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "respondWith":  "json",
+                                                               "responseBody":  "={ \"received\": true }",
+                                                               "options":  {
+                                                                               "responseCode":  200
+                                                                           }
+                                                           },
+                                            "id":  "a1342901-ec98-469f-8892-130ea9332474",
+                                            "type":  "n8n-nodes-base.respondToWebhook",
+                                            "name":  "Respond - 200 Stripe ACK",
+                                            "position":  [
+                                                             460,
+                                                             300
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Parser l\u0027?v?nement Stripe\nconst body = $input.first().json.body || $input.first().json;\n\nconst eventType = body.type || \u0027\u0027;\nconst dataObj = (body.data \u0026\u0026 body.data.object) || {};\n\n// Extraire les champs selon le type d\u0027?v?nement\nlet customerEmail = \u0027\u0027;\nlet customerId = \u0027\u0027;\nlet planFromMetadata = \u0027\u0027;\nlet subscriptionId = \u0027\u0027;\nlet subscriptionStatus = \u0027\u0027;\nlet newPlan = \u0027\u0027;\n\nif (eventType === \u0027checkout.session.completed\u0027) {\n  customerEmail = dataObj.customer_email || dataObj.customer_details?.email || \u0027\u0027;\n  customerId = dataObj.customer || \u0027\u0027;\n  subscriptionId = dataObj.subscription || \u0027\u0027;\n  // R?cup?rer le plan depuis les m?tadonn?es de la session\n  planFromMetadata = (dataObj.metadata \u0026\u0026 dataObj.metadata.plan) || \u0027starter\u0027;\n}\n\nif (eventType === \u0027customer.subscription.updated\u0027) {\n  customerId = dataObj.customer || \u0027\u0027;\n  subscriptionId = dataObj.id || \u0027\u0027;\n  subscriptionStatus = dataObj.status || \u0027\u0027;\n  // Le plan vient du premier item de la subscription\n  const item = dataObj.items?.data?.[0];\n  newPlan = (item?.price?.metadata?.plan) || (item?.plan?.metadata?.plan) || \u0027starter\u0027;\n}\n\nif (eventType === \u0027customer.subscription.deleted\u0027) {\n  customerId = dataObj.customer || \u0027\u0027;\n  subscriptionId = dataObj.id || \u0027\u0027;\n}\n\nreturn [{\n  json: {\n    eventType,\n    customerEmail,\n    customerId,\n    subscriptionId,\n    planFromMetadata,\n    subscriptionStatus,\n    newPlan,\n    rawData: dataObj\n  }\n}];\n"
+                                                           },
+                                            "id":  "74c2b2f3-1d39-4adb-91c1-0ba7633ac983",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Parser ?v?nement Stripe",
+                                            "position":  [
+                                                             680,
+                                                             300
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "rules":  {
+                                                                             "values":  [
+                                                                                            {
+                                                                                                "conditions":  {
+                                                                                                                   "options":  {
+                                                                                                                                   "caseSensitive":  true,
+                                                                                                                                   "leftValue":  "",
+                                                                                                                                   "typeValidation":  "strict"
+                                                                                                                               },
+                                                                                                                   "conditions":  [
+                                                                                                                                      {
+                                                                                                                                          "id":  "checkout-completed",
+                                                                                                                                          "leftValue":  "={{ $json.eventType }}",
+                                                                                                                                          "rightValue":  "checkout.session.completed",
+                                                                                                                                          "operator":  {
+                                                                                                                                                           "type":  "string",
+                                                                                                                                                           "operation":  "equals"
+                                                                                                                                                       }
+                                                                                                                                      }
+                                                                                                                                  ],
+                                                                                                                   "combinator":  "and"
+                                                                                                               },
+                                                                                                "renameOutput":  true,
+                                                                                                "outputKey":  "checkout_completed"
+                                                                                            },
+                                                                                            {
+                                                                                                "conditions":  {
+                                                                                                                   "options":  {
+                                                                                                                                   "caseSensitive":  true,
+                                                                                                                                   "leftValue":  "",
+                                                                                                                                   "typeValidation":  "strict"
+                                                                                                                               },
+                                                                                                                   "conditions":  [
+                                                                                                                                      {
+                                                                                                                                          "id":  "sub-updated",
+                                                                                                                                          "leftValue":  "={{ $json.eventType }}",
+                                                                                                                                          "rightValue":  "customer.subscription.updated",
+                                                                                                                                          "operator":  {
+                                                                                                                                                           "type":  "string",
+                                                                                                                                                           "operation":  "equals"
+                                                                                                                                                       }
+                                                                                                                                      }
+                                                                                                                                  ],
+                                                                                                                   "combinator":  "and"
+                                                                                                               },
+                                                                                                "renameOutput":  true,
+                                                                                                "outputKey":  "subscription_updated"
+                                                                                            },
+                                                                                            {
+                                                                                                "conditions":  {
+                                                                                                                   "options":  {
+                                                                                                                                   "caseSensitive":  true,
+                                                                                                                                   "leftValue":  "",
+                                                                                                                                   "typeValidation":  "strict"
+                                                                                                                               },
+                                                                                                                   "conditions":  [
+                                                                                                                                      {
+                                                                                                                                          "id":  "sub-deleted",
+                                                                                                                                          "leftValue":  "={{ $json.eventType }}",
+                                                                                                                                          "rightValue":  "customer.subscription.deleted",
+                                                                                                                                          "operator":  {
+                                                                                                                                                           "type":  "string",
+                                                                                                                                                           "operation":  "equals"
+                                                                                                                                                       }
+                                                                                                                                      }
+                                                                                                                                  ],
+                                                                                                                   "combinator":  "and"
+                                                                                                               },
+                                                                                                "renameOutput":  true,
+                                                                                                "outputKey":  "subscription_deleted"
+                                                                                            }
+                                                                                        ]
+                                                                         },
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "ee20a5c8-0775-49b8-8fee-8fd64465efa1",
+                                            "type":  "n8n-nodes-base.switch",
+                                            "name":  "Switch - Type d\u0027?v?nement",
+                                            "position":  [
+                                                             900,
+                                                             300
+                                                         ],
+                                            "typeVersion":  3
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "upsert",
+                                                               "tableId":  "profils",
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "email",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerEmail }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "nom",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerEmail.split(\u0027@\u0027)[0] }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "plan",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.planFromMetadata || \u0027starter\u0027 }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "actif",
+                                                                                                        "fieldValue":  true
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "stripe_customer_id",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerId }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            },
+                                                               "conflictColumnsUi":  {
+                                                                                         "conflictColumnValues":  [
+                                                                                                                      {
+                                                                                                                          "column":  "email"
+                                                                                                                      }
+                                                                                                                  ]
+                                                                                     }
+                                                           },
+                                            "id":  "7137b0f6-763d-4b1d-b63b-ced7b926859f",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - Cr?er/MAJ profil",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             1120,
+                                                             100
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://yltajummrsorqvynvod.supabase.co/auth/v1/admin/users",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "apikey",
+                                                                                                               "value":  "={{ $env[\u0027SUPABASE_SERVICE_ROLE_KEY\u0027] }}"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "Authorization",
+                                                                                                               "value":  "={{ \u0027Bearer \u0027 + $env[\u0027SUPABASE_SERVICE_ROLE_KEY\u0027] }}"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ email: $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerEmail, email_confirm: false, user_metadata: { plan: $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.planFromMetadata } }) }}",
+                                                               "options":  {
+                                                                               "timeout":  10000
+                                                                           }
+                                                           },
+                                            "id":  "7d762ab6-aeb5-4ef2-9de0-04624a8525e6",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Inviter utilisateur Supabase Auth",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1340,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr?parer email de bienvenue\nconst eventData = $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json;\nconst email = eventData.customerEmail;\nconst plan = eventData.planFromMetadata || \u0027starter\u0027;\nconst prenom = email.split(\u0027@\u0027)[0];\n\nconst planLabels = { starter: \u0027Starter\u0027, pro: \u0027Pro\u0027, booster: \u0027Booster\u0027 };\nconst planLabel = planLabels[plan] || \u0027Starter\u0027;\n\nconst tallyUrl = `https://tally.so/r/b5kE41?email=${encodeURIComponent(email)}`;\n\nconst html = `\n\u003cdiv style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"\u003e\n  \u003ch1 style=\"color: #2563eb;\"\u003eBienvenue sur ApplyFlow ! ??\u003c/h1\u003e\n  \u003cp\u003eBonjour ${prenom},\u003c/p\u003e\n  \u003cp\u003eVotre abonnement \u003cstrong\u003e${planLabel}\u003c/strong\u003e (${plan === \u0027starter\u0027 ? \u00279\u0027 : plan === \u0027pro\u0027 ? \u002719\u0027 : \u002739\u0027} CHF/mois) est maintenant actif.\u003c/p\u003e\n  \n  \u003cdiv style=\"background:#f0f9ff; padding:16px; border-radius:8px; margin:16px 0;\"\u003e\n    \u003ch3 style=\"margin:0 0 8px; color:#2563eb;\"\u003e?? Premi?re ?tape : compl?ter votre profil\u003c/h3\u003e\n    \u003cp style=\"margin:0 0 12px;\"\u003ePour recevoir des alertes emploi personnalis?es, configurez votre profil :\u003c/p\u003e\n    \u003ca href=\"${tallyUrl}\" style=\"display:inline-block; padding:12px 24px; background:#2563eb; color:white; border-radius:8px; text-decoration:none; font-size:16px;\"\u003e\n      Compl?ter mon profil ?\n    \u003c/a\u003e\n  \u003c/div\u003e\n\n  \u003ch3\u003eCe que vous pouvez faire avec ApplyFlow :\u003c/h3\u003e\n  \u003cul\u003e\n    \u003cli\u003e? Recevoir des alertes emploi personnalis?es 2x/jour\u003c/li\u003e\n    ${plan !== \u0027starter\u0027 ? \u0027\u003cli\u003e? G?n?rer des lettres de motivation en 30 secondes\u003c/li\u003e\u0027 : \u0027\u003cli\u003e? G?n?ration LM (disponible d?s le plan Pro)\u003c/li\u003e\u0027}\n    ${plan !== \u0027starter\u0027 ? \u0027\u003cli\u003e? Suivre vos candidatures dans le CRM\u003c/li\u003e\u0027 : \u0027\u0027}\n  \u003c/ul\u003e\n  \n  \u003cp\u003eVous d?finirez votre mot de passe via l\u0027email de v?rification envoy? par ApplyFlow.\u003c/p\u003e\n  \n  \u003cp style=\"color:#6b7280; font-size:12px; margin-top:24px;\"\u003e\n    Des questions ? R?pondez ? cet email, nous sommes l? pour vous aider.\u003cbr\u003e\n    ApplyFlow - La recherche d\u0027emploi automatis?e en Suisse romande\n  \u003c/p\u003e\n\u003c/div\u003e\n`;\n\nreturn [{\n  json: { email, prenom, plan, html, subject: `Bienvenue sur ApplyFlow ${prenom} ! Votre abonnement ${planLabel} est actif ??` }\n}];\n"
+                                                           },
+                                            "id":  "c61ded31-10fc-4a8c-af89-2cdd3b0cacd5",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr?parer email bienvenue",
+                                            "position":  [
+                                                             1560,
+                                                             100
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.resend.com/emails",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003cbienvenue@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
+                                                               "options":  {
+                                                                               "timeout":  10000
+                                                                           },
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "httpHeaderAuth"
+                                                           },
+                                            "id":  "6cd4db25-5170-45f5-8544-a8ab72132775",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Email bienvenue Resend",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1780,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2,
+                                            "credentials":  {
+                                                                "httpHeaderAuth":  {
+                                                                                       "id":  "tc2f1NdNXAUtStcp",
+                                                                                       "name":  "Resend API"
+                                                                                   }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "getAll",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "stripe_customer_id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerId }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "limit":  1,
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "e24d56a5-e9cd-4672-bd7d-29816e81aa8e",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - R?cup?rer profil (update)",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             1120,
+                                                             300
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "update",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "stripe_customer_id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerId }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "plan",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.newPlan || \u0027starter\u0027 }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "updated_at",
+                                                                                                        "fieldValue":  "={{ new Date().toISOString() }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "id":  "d70dea54-f350-4f5d-b592-711e8c22aed4",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - Mettre ? jour plan",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             1340,
+                                                             300
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "update",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "stripe_customer_id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json.customerId }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "actif",
+                                                                                                        "fieldValue":  false
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "updated_at",
+                                                                                                        "fieldValue":  "={{ new Date().toISOString() }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "id":  "ff1d4668-02ca-4288-89a1-a014ddc6b3ab",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - D?sactiver utilisateur",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             1120,
+                                                             500
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr?parer email de fin d\u0027abonnement\nconst eventData = $(\u0027Code - Parser ?v?nement Stripe\u0027).item.json;\nconst customerId = eventData.customerId;\n\n// R?cup?rer l\u0027email depuis le profil d?sactiv?\nconst profil = $(\u0027Supabase - D?sactiver utilisateur\u0027).item.json;\nconst email = profil.email || \u0027\u0027;\nconst prenom = email ? email.split(\u0027@\u0027)[0] : \u0027\u0027;\n\nconst html = `\n\u003cdiv style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"\u003e\n  \u003ch2 style=\"color: #6b7280;\"\u003eVotre abonnement ApplyFlow a ?t? r?sili?\u003c/h2\u003e\n  \u003cp\u003eBonjour ${prenom},\u003c/p\u003e\n  \u003cp\u003eNous avons bien pris en compte la r?siliation de votre abonnement. Votre acc?s ? ApplyFlow est maintenant suspendu.\u003c/p\u003e\n  \n  \u003cdiv style=\"background:#fef2f2; padding:16px; border-radius:8px; margin:16px 0; border-left:4px solid #ef4444;\"\u003e\n    \u003cp style=\"margin:0;\"\u003eVos donn?es sont conserv?es pendant 30 jours. Si vous vous r?abonnez dans ce d?lai, vous retrouverez votre historique complet.\u003c/p\u003e\n  \u003c/div\u003e\n  \n  \u003cp\u003eVous souhaitez vous r?abonner ?\u003c/p\u003e\n  \u003ca href=\"https://applyflow.ch/pricing\" style=\"display:inline-block; padding:12px 24px; background:#2563eb; color:white; border-radius:8px; text-decoration:none;\"\u003e\n    Voir les offres ?\n  \u003c/a\u003e\n  \n  \u003cp style=\"color:#6b7280; font-size:12px; margin-top:24px;\"\u003e\n    Des questions ? R?pondez ? cet email.\u003cbr\u003e\n    ApplyFlow - La recherche d\u0027emploi automatis?e en Suisse romande\n  \u003c/p\u003e\n\u003c/div\u003e\n`;\n\nreturn [{\n  json: {\n    email,\n    prenom,\n    html,\n    subject: \u0027Votre abonnement ApplyFlow a ?t? r?sili?\u0027\n  }\n}];\n"
+                                                           },
+                                            "id":  "07518188-7ede-4237-ba95-d01b3b5d040a",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr?parer email r?siliation",
+                                            "position":  [
+                                                             1340,
+                                                             500
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.resend.com/emails",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003cnoreply@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
+                                                               "options":  {
+                                                                               "timeout":  10000
+                                                                           },
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "httpHeaderAuth"
+                                                           },
+                                            "id":  "eca87509-db75-4122-b7bb-72c2997c6ec4",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Email r?siliation Resend",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1560,
+                                                             500
+                                                         ],
+                                            "typeVersion":  4.2,
+                                            "credentials":  {
+                                                                "httpHeaderAuth":  {
+                                                                                       "id":  "tc2f1NdNXAUtStcp",
+                                                                                       "name":  "Resend API"
+                                                                                   }
+                                                            }
+                                        },
+                                        {
+                                            "id":  "ee325cf8-7dbd-4cc4-a558-d0cf1aeae09e",
+                                            "name":  "Code - Verifier signature Stripe",
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             760,
+                                                             300
+                                                         ],
+                                            "parameters":  {
+                                                               "jsCode":  "// BUG-006: Stripe HMAC-SHA256 signature verification\n// NOTE: require(\u0027crypto\u0027) is BLOCKED on n8n Cloud - using Web Crypto API instead\n// Reference: https://docs.n8n.io/code/builtin/n8n-builtin-variables/\nconst sigHeader = $input.first().headers[\u0027stripe-signature\u0027] || \u0027\u0027;\nconst rawBody = $input.first().json.rawBody || JSON.stringify($input.first().json.body || $input.first().json);\n\n// Parse stripe-signature header: t=timestamp,v1=hmac\nconst parts = {};\nsigHeader.split(\u0027,\u0027).forEach(part =\u003e {\n  const eq = part.indexOf(\u0027=\u0027);\n  if (eq \u003e 0) parts[part.substring(0, eq)] = part.substring(eq + 1);\n});\n\nconst timestamp = parts[\u0027t\u0027];\nconst v1 = parts[\u0027v1\u0027];\n\nif (!timestamp || !v1) {\n  throw new Error(\u0027Stripe-Signature header missing or malformed\u0027);\n}\n\nconst secret = $env[\u0027STRIPE_WEBHOOK_SECRET\u0027] || \u0027\u0027;\nif (!secret) {\n  // Soft fail during initial setup - MUST be set before go-live\n  console.warn(\u0027[WF-STRIPE] STRIPE_WEBHOOK_SECRET not configured - skipping HMAC verification\u0027);\n  return $input.all();\n}\n\n// Reconstruct the signed payload exactly as Stripe does\nconst signedPayload = `${timestamp}.${rawBody}`;\n\n// HMAC-SHA256 via Web Crypto API (available in n8n Cloud sandbox)\nconst encoder = new TextEncoder();\nconst cryptoKey = await crypto.subtle.importKey(\n  \u0027raw\u0027, encoder.encode(secret),\n  { name: \u0027HMAC\u0027, hash: \u0027SHA-256\u0027 }, false, [\u0027sign\u0027]\n);\nconst sig = await crypto.subtle.sign(\u0027HMAC\u0027, cryptoKey, encoder.encode(signedPayload));\nconst expected = Array.from(new Uint8Array(sig)).map(b =\u003e b.toString(16).padStart(2, \u00270\u0027)).join(\u0027\u0027);\n\n// Replay attack guard: reject events older than 5 minutes\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - parseInt(timestamp, 10)) \u003e 300) {\n  throw new Error(\u0027Stripe webhook timestamp too old - possible replay attack\u0027);\n}\n\nif (expected !== v1) {\n  throw new Error(\u0027Invalid Stripe signature - request rejected\u0027);\n}\n\nreturn $input.all();",
+                                                               "mode":  "runOnceForAllItems"
+                                                           }
+                                        }
+                                    ],
+                          "connections":  {
+                                              "Webhook - Stripe":  {
+                                                                       "main":  [
+                                                                                    [
+                                                                                        {
+                                                                                            "node":  "Respond - 200 Stripe ACK",
+                                                                                            "type":  "main",
+                                                                                            "index":  0
+                                                                                        }
+                                                                                    ]
+                                                                                ]
+                                                                   },
+                                              "Respond - 200 Stripe ACK":  {
+                                                                               "main":  [
+                                                                                            [
+                                                                                                {
+                                                                                                    "node":  "Code - Verifier signature Stripe",
+                                                                                                    "type":  "main",
+                                                                                                    "index":  0
+                                                                                                }
+                                                                                            ]
+                                                                                        ]
+                                                                           },
+                                              "Code - Parser ?v?nement Stripe":  {
+                                                                                     "main":  [
+                                                                                                  [
+                                                                                                      {
+                                                                                                          "node":  "Switch - Type d\u0027?v?nement",
+                                                                                                          "type":  "main",
+                                                                                                          "index":  0
+                                                                                                      }
+                                                                                                  ]
+                                                                                              ]
+                                                                                 },
+                                              "Switch - Type d\u0027?v?nement":  {
+                                                                                     "main":  [
+                                                                                                  [
+                                                                                                      {
+                                                                                                          "node":  "Supabase - Cr?er/MAJ profil",
+                                                                                                          "type":  "main",
+                                                                                                          "index":  0
+                                                                                                      }
+                                                                                                  ],
+                                                                                                  [
+                                                                                                      {
+                                                                                                          "node":  "Supabase - R?cup?rer profil (update)",
+                                                                                                          "type":  "main",
+                                                                                                          "index":  0
+                                                                                                      }
+                                                                                                  ],
+                                                                                                  [
+                                                                                                      {
+                                                                                                          "node":  "Supabase - D?sactiver utilisateur",
+                                                                                                          "type":  "main",
+                                                                                                          "index":  0
+                                                                                                      }
+                                                                                                  ]
+                                                                                              ]
+                                                                                 },
+                                              "Supabase - Cr?er/MAJ profil":  {
+                                                                                  "main":  [
+                                                                                               [
+                                                                                                   {
+                                                                                                       "node":  "HTTP - Inviter utilisateur Supabase Auth",
+                                                                                                       "type":  "main",
+                                                                                                       "index":  0
+                                                                                                   }
+                                                                                               ]
+                                                                                           ]
+                                                                              },
+                                              "HTTP - Inviter utilisateur Supabase Auth":  {
+                                                                                               "main":  [
+                                                                                                            [
+                                                                                                                {
+                                                                                                                    "node":  "Code - Pr?parer email bienvenue",
+                                                                                                                    "type":  "main",
+                                                                                                                    "index":  0
+                                                                                                                }
+                                                                                                            ]
+                                                                                                        ]
+                                                                                           },
+                                              "Code - Pr?parer email bienvenue":  {
+                                                                                      "main":  [
+                                                                                                   [
+                                                                                                       {
+                                                                                                           "node":  "HTTP - Email bienvenue Resend",
+                                                                                                           "type":  "main",
+                                                                                                           "index":  0
+                                                                                                       }
+                                                                                                   ]
+                                                                                               ]
+                                                                                  },
+                                              "Supabase - R?cup?rer profil (update)":  {
+                                                                                           "main":  [
+                                                                                                        [
+                                                                                                            {
+                                                                                                                "node":  "Supabase - Mettre ? jour plan",
+                                                                                                                "type":  "main",
+                                                                                                                "index":  0
+                                                                                                            }
+                                                                                                        ]
+                                                                                                    ]
+                                                                                       },
+                                              "Supabase - D?sactiver utilisateur":  {
+                                                                                        "main":  [
+                                                                                                     [
+                                                                                                         {
+                                                                                                             "node":  "Code - Pr?parer email r?siliation",
+                                                                                                             "type":  "main",
+                                                                                                             "index":  0
+                                                                                                         }
+                                                                                                     ]
+                                                                                                 ]
+                                                                                    },
+                                              "Code - Pr?parer email r?siliation":  {
+                                                                                        "main":  [
+                                                                                                     [
+                                                                                                         {
+                                                                                                             "node":  "HTTP - Email r?siliation Resend",
+                                                                                                             "type":  "main",
+                                                                                                             "index":  0
+                                                                                                         }
+                                                                                                     ]
+                                                                                                 ]
+                                                                                    },
+                                              "Code - Verifier signature Stripe":  {
+                                                                                       "main":  [
+                                                                                                    [
+                                                                                                        {
+                                                                                                            "node":  "Code - Parser ?v?nement Stripe",
+                                                                                                            "type":  "main",
+                                                                                                            "index":  0
+                                                                                                        }
+                                                                                                    ]
+                                                                                                ]
+                                                                                   }
+                                          },
+                          "authors":  "Paul Zurkinden",
+                          "name":  null,
+                          "description":  null
+                      }
 }

@@ -1,4 +1,4 @@
--- Migration 001: Initial schema for ApplyFlow
+﻿-- Migration 001: Initial schema for ApplyFlow
 -- Apply via Supabase SQL Editor: https://supabase.com/dashboard/project/yltajummrsorqvynvod/sql
 
 -- Enable UUID extension
@@ -114,7 +114,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$ LANGUAGE plpgsql SET search_path = public, pg_catalog;
 
 CREATE TRIGGER set_updated_at_profils
   BEFORE UPDATE ON profils
@@ -135,7 +135,7 @@ BEGIN
   UPDATE profils SET user_id = NEW.id WHERE email = NEW.email AND user_id IS NULL;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_catalog;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

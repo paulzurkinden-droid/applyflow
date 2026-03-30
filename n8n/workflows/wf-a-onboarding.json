@@ -1,0 +1,1737 @@
+{
+    "updatedAt":  "2026-03-30T11:15:53.048Z",
+    "createdAt":  "2026-03-11T17:39:08.491Z",
+    "id":  "EddlSDFtz15DWldl",
+    "name":  "WF-A Onboarding",
+    "description":  null,
+    "active":  true,
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "f1fea724-e392-473d-963a-49cf3207f5cf",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       0,
+                                       -64
+                                   ],
+                      "id":  "54f311c1-3431-4d1f-b76c-416bc9397790",
+                      "name":  "Webhook",
+                      "webhookId":  "f1fea724-e392-473d-963a-49cf3207f5cf"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const body = $input.first().json.body;\nconst fields = body.data.fields;\n\nfunction resolveOptions(field) {\n  if (!field || !field.value) return \u0027\u0027;\n  const values = Array.isArray(field.value) ? field.value : [field.value];\n  return values.map(id =\u003e {\n    const opt = field.options?.find(o =\u003e o.id === id);\n    return opt ? opt.text : id;\n  }).join(\u0027, \u0027);\n}\n\nfunction getField(label) {\n  return fields.find(f =\u003e f.label === label);\n}\n\nfunction getFieldByKey(key) {\n  return fields.find(f =\u003e f.key === key);\n}\n\n// Champs de base\nconst nom = getField(\u0027Pr?nom et Nom\u0027)?.value || \u0027\u0027;\nconst email = getField(\u0027Email\u0027)?.value || \u0027\u0027;\nconst poste_actuel = getField(\u0027Poste actuel ou dernier poste\u0027)?.value || \u0027\u0027;\nconst annees_exp = getField(\"Ann?es d\u0027exp?rience\")?.value || 0;\nconst secteurs_base = getField(\"Secteurs d\u0027activit?\")?.value || \u0027\u0027;\nconst formations_base = getField(\u0027Formations / dipl?mes\u0027)?.value || \u0027\u0027;\nconst langues_base = getField(\u0027Langues et niveaux\u0027)?.value || \u0027\u0027;\nconst poste_cible = getField(\u0027Poste recherch?\u0027)?.value || \u0027\u0027;\nconst cantons = resolveOptions(getField(\u0027Cantons souhait?s\u0027));\nconst contrats = resolveOptions(getField(\u0027Type de contrat\u0027));\nconst taux = resolveOptions(getField(\u0027Taux de travail souhait?\u0027));\n\nconst cvField = getField(\u0027Votre CV (optionnel)\u0027);\nconst cv_url = cvField?.value?.[0]?.url || \u0027\u0027;\nconst cv_nom = cvField?.value?.[0]?.name || \u0027\u0027;\nconst has_cv = cv_url !== \u0027\u0027;\n\n// Champs sans CV - projet professionnel\nconst role_vise = getField(\u0027Quel poste ou type de r?le visez-vous ?\u0027)?.value || \u0027\u0027;\nconst motivation = getField(\"Qu\u0027est-ce qui vous motive dans ce type de poste ?\")?.value || \u0027\u0027;\n\n// Secteurs cibles (checkboxes)\nconst secteursField = getField(\"Dans quel(s) secteur(s) souhaitez-vous travailler ? \");\nconst secteurs_cibles = secteursField?.options\n  ?.filter(o =\u003e secteursField.value?.includes(o.id) \u0026\u0026 o.text)\n  .map(o =\u003e o.text).join(\u0027, \u0027) || \u0027\u0027;\n\n// Exp?riences (3 blocs)\nconst expKeys = [\n  { employeur: \u0027question_PAN7p1\u0027, lieu: \u0027question_EPG2Kl\u0027, poste: \u0027question_rlQe5o\u0027, periode: \u0027question_42YMQr\u0027, contexte: \u0027question_jBrjZQ\u0027, missions: \u0027question_24YpXe\u0027, resultat: \u0027question_xd7Ard\u0027 },\n  { employeur: \u0027question_NAxar0\u0027, lieu: \u0027question_qbq9LO\u0027, poste: \u0027question_QAqb1Y\u0027, periode: \u0027question_9dY8BE\u0027, contexte: \u0027question_eBGVMx\u0027, missions: \u0027question_WA6L2e\u0027, resultat: \u0027question_aB1R9Z\u0027 },\n  { employeur: \u0027question_7dYyqa\u0027, lieu: \u0027question_blMoq6\u0027, poste: \u0027question_AlYEzy\u0027, periode: \u0027question_BGYrae\u0027, contexte: \u0027question_kY42lr\u0027, missions: \u0027question_vNalMg\u0027, resultat: \u0027question_KM49zg\u0027 },\n];\n\nconst experiences = expKeys\n  .map(keys =\u003e ({\n    employeur: getFieldByKey(keys.employeur)?.value || \u0027\u0027,\n    lieu: getFieldByKey(keys.lieu)?.value || \u0027\u0027,\n    poste: getFieldByKey(keys.poste)?.value || \u0027\u0027,\n    periode: getFieldByKey(keys.periode)?.value || \u0027\u0027,\n    contexte: getFieldByKey(keys.contexte)?.value || \u0027\u0027,\n    missions: getFieldByKey(keys.missions)?.value || \u0027\u0027,\n    resultat: getFieldByKey(keys.resultat)?.value || \u0027\u0027,\n  }))\n  .filter(e =\u003e e.employeur); // Garde uniquement les exp?riences remplies\n\n// Formation et certifications\nconst diplomes = getField(\u0027Dipl?me(s) obtenu(s)\u0027)?.value || \u0027\u0027;\nconst certifications = getField(\u0027Formations continues ou certifications\u0027)?.value || \u0027\u0027;\n\n// Langues (Matrix)\nconst languesMatrix = fields.find(f =\u003e f.label?.includes(\u0027Quelles langues\u0027));\nlet langues_structurees = \u0027\u0027;\nif (languesMatrix?.value \u0026\u0026 languesMatrix.rows \u0026\u0026 languesMatrix.columns) {\n  langues_structurees = languesMatrix.rows\n    .map(row =\u003e {\n      const colIds = languesMatrix.value[row.id];\n      if (!colIds || !colIds.length) return null;\n      const niveau = languesMatrix.columns.find(c =\u003e c.id === colIds[0])?.text || \u0027\u0027;\n      return niveau === \u0027Notions (A1-A2)\u0027 ? null : `${row.text} : ${niveau}`;\n    })\n    .filter(Boolean)\n    .join(\u0027, \u0027);\n}\n\nreturn [{\n  json: {\n    nom, email, poste_actuel, annees_exp, secteurs_base,\n    formations_base, langues_base, poste_cible, cantons,\n    contrats, taux, cv_url, cv_nom, has_cv,\n    role_vise, motivation, secteurs_cibles,\n    experiences, diplomes, certifications, langues_structurees,\n  },\n}];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       224,
+                                       -64
+                                   ],
+                      "id":  "eda5100d-42ee-49d1-85e8-533ba1d20fdd",
+                      "name":  "Code in JavaScript"
+                  },
+                  {
+                      "parameters":  {
+                                         "tableId":  "preferences_recherche",
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "poste_cible",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.poste_cible }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "localisation",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cantons }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "type_contrat",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.contrats }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "salaire_min",
+                                                                                  "fieldValue":  "0"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       1120,
+                                       -64
+                                   ],
+                      "id":  "022bfff2-f7e9-499b-925b-c3e9670dd9cd",
+                      "name":  "Cr?er pr?f?rences",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "file"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.3,
+                      "position":  [
+                                       1568,
+                                       -160
+                                   ],
+                      "id":  "889efeb8-67c3-4b51-a206-bd83c15562b0",
+                      "name":  "T?l?charger CV"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.anthropic.com/v1/messages",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "anthropicApi",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "anthropic-version",
+                                                                                         "value":  "2023-06-01"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "contentType":  "raw",
+                                         "rawContentType":  "application/json",
+                                         "body":  "={{ $json.body }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.3,
+                      "position":  [
+                                       2016,
+                                       -160
+                                   ],
+                      "id":  "4aeb8810-e039-4cab-be31-10c4c70963a9",
+                      "name":  "Extraire CV",
+                      "credentials":  {
+                                          "anthropicApi":  {
+                                                               "id":  "Jzb8eFBziiNh4ceR",
+                                                               "name":  "Anthropic account"
+                                                           }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const binaryData = await this.helpers.getBinaryDataBuffer(0, \u0027data\u0027);\nconst base64 = binaryData.toString(\u0027base64\u0027);\n\nconst body = JSON.stringify({\n  model: \"claude-opus-4-5\",\n  max_tokens: 2048,\n  messages: [\n    {\n      role: \"user\",\n      content: [\n        {\n          type: \"document\",\n          source: {\n            type: \"base64\",\n            media_type: \"application/pdf\",\n            data: base64,\n          },\n        },\n        {\n          type: \"text\",\n          text: \"Voici un CV en PDF. Extrais et structure les informations suivantes en texte clair :\\n- Nom complet\\n- Poste actuel / dernier poste\\n- Ann?es d\u0027exp?rience totales\\n- Secteurs d\u0027activit?\\n- Formations et dipl?mes\\n- Langues et niveaux\\n- Comp?tences cl?s\\n- Exp?riences professionnelles (entreprise, poste, dur?e, missions principales)\\n\\nR?ponds uniquement avec le texte structur?, sans commentaire.\",\n        },\n      ],\n    },\n  ],\n});\n\nreturn [{\n  json: {\n    body,\n  },\n}];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1792,
+                                       -160
+                                   ],
+                      "id":  "97556712-e138-45fd-abb9-8037aded088b",
+                      "name":  "Convertir en base64"
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "tableId":  "profils",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "email",
+                                                                                "condition":  "eq",
+                                                                                "keyValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "cv_texte",
+                                                                                  "fieldValue":  "={{ $(\u0027Extraire CV\u0027).item.json.content[0].text }}"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       2240,
+                                       -160
+                                   ],
+                      "id":  "4ddbb7d3-6b2d-468a-a634-615e6c5333b1",
+                      "name":  "Update a row",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "tableId":  "profils",
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "nom",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.nom }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "email",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "plan",
+                                                                                  "fieldValue":  "starter"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "description_libre",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.poste_actuel }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "cv_texte",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "annees_exp",
+                                                                                  "fieldValue":  "={{ parseInt($(\u0027Code in JavaScript\u0027).item.json.annees_exp) || 0 }}"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       896,
+                                       32
+                                   ],
+                      "id":  "c09c011b-47e1-4044-94e7-35b3cedfe739",
+                      "name":  "Cr?er profil",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "fdbb3c0b-3653-4829-8e88-dbfe83375989",
+                                                                                   "leftValue":  "={{ $json.email }}",
+                                                                                   "rightValue":  "",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "notEmpty",
+                                                                                                    "singleValue":  true
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       672,
+                                       -64
+                                   ],
+                      "id":  "55064af3-3625-47c1-9ce5-72bf7995fde3",
+                      "name":  "If"
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "tableId":  "profils",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "email",
+                                                                                "condition":  "eq",
+                                                                                "keyValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "nom",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.nom }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "description_libre",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.poste_actuel }} | {{ $(\u0027Code in JavaScript\u0027).item.json.annees_exp }} ans | {{ $(\u0027Code in JavaScript\u0027).item.json.secteurs }} | {{ $(\u0027Code in JavaScript\u0027).item.json.formations }} | {{ $(\u0027Code in JavaScript\u0027).item.json.langues }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "cv_texte",
+                                                                                  "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "annees_exp",
+                                                                                  "fieldValue":  "={{ parseInt($(\u0027Code in JavaScript\u0027).item.json.annees_exp) || 0 }}"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       896,
+                                       -160
+                                   ],
+                      "id":  "ab64f042-5a69-4c06-b773-bb282d735503",
+                      "name":  "Mettre ? jour profi",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "profils",
+                                         "limit":  1,
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "email",
+                                                                                "condition":  "eq",
+                                                                                "keyValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                            }
+                                                                        ]
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       448,
+                                       -64
+                                   ],
+                      "id":  "d360a437-724f-44e3-bde3-0b28d0f2df6a",
+                      "name":  "Get many rows",
+                      "alwaysOutputData":  true,
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "1764aad4-cd41-4a4f-ab2a-e53041b8b1b2",
+                                                                                   "leftValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}",
+                                                                                   "rightValue":  "",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "notEmpty",
+                                                                                                    "singleValue":  true
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       1344,
+                                       -64
+                                   ],
+                      "id":  "8141bc8f-26c1-4f2e-b39b-df31658c06fc",
+                      "name":  "If1"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.anthropic.com/v1/messages",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "anthropicApi",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "anthropic-version",
+                                                                                         "value":  "2023-06-01"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ $json.body }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.3,
+                      "position":  [
+                                       1792,
+                                       32
+                                   ],
+                      "id":  "4bdf51b0-ab8d-49a5-976f-e3c354dbdd60",
+                      "name":  "G?n?rer CV",
+                      "credentials":  {
+                                          "anthropicApi":  {
+                                                               "id":  "Jzb8eFBziiNh4ceR",
+                                                               "name":  "Anthropic account"
+                                                           }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const d = $(\u0027Code in JavaScript\u0027).item.json;\n\n// Construire le texte des exp?riences\nconst expTexte = d.experiences.map((e, i) =\u003e `\nExp?rience ${i + 1} :\n- Employeur : ${e.employeur}\n- Lieu : ${e.lieu}\n- Poste : ${e.poste}\n- P?riode : ${e.periode}\n- Contexte : ${e.contexte}\n- Missions : ${e.missions}\n- R?sultat : ${e.resultat}\n`).join(\u0027\\n\u0027);\n\nconst prompt = `Tu es un expert en r?daction de CV professionnels. \nG?n?re un CV complet et professionnel en fran?ais pour la personne suivante.\n\nDONN?ES DU CANDIDAT :\n- Nom : ${d.nom}\n- Poste vis? : ${d.role_vise || d.poste_cible}\n- Motivation : ${d.motivation}\n- Secteurs cibles : ${d.secteurs_cibles}\n- Ann?es d\u0027exp?rience : ${d.annees_exp}\n- Langues : ${d.langues_structurees || d.langues_base}\n- Dipl?mes : ${d.diplomes}\n- Certifications : ${d.certifications}\n\nEXP?RIENCES PROFESSIONNELLES :\n${expTexte}\n\nINSTRUCTIONS :\nG?n?re un CV structur? avec les sections suivantes dans cet ordre exact :\n1. PROFIL - 3 ? 5 phrases synth?tisant l\u0027expertise, les ann?es d\u0027exp?rience et la valeur ajout?e du candidat\n2. COMP?TENCES CL?S - 4 comp?tences principales avec une ligne de d?tail chacune\n3. EXP?RIENCE PROFESSIONNELLE - Pour chaque exp?rience : employeur en majuscules, lieu, poste en gras, p?riode, puis sous-sections Contexte / R?alisations / R?sultats\n4. FORMATION - dipl?mes avec ann?e et ?tablissement\n5. CERTIFICATIONS - si applicable\n6. LANGUES - avec niveaux\n\nR?ponds UNIQUEMENT avec un JSON valide sans aucun texte autour, sans balises markdown, strictement ce format :\n{\n  \"profil\": \"texte du profil\",\n  \"competences\": [\n    {\"titre\": \"Comp?tence 1\", \"detail\": \"description\"},\n    {\"titre\": \"Comp?tence 2\", \"detail\": \"description\"},\n    {\"titre\": \"Comp?tence 3\", \"detail\": \"description\"},\n    {\"titre\": \"Comp?tence 4\", \"detail\": \"description\"}\n  ],\n  \"experiences\": [\n    {\n      \"employeur\": \"NOM EMPLOYEUR\",\n      \"lieu\": \"Ville\",\n      \"poste\": \"Intitul? du poste\",\n      \"periode\": \"2020 - aujourd\u0027hui\",\n      \"contexte\": \"texte contexte\",\n      \"realisations\": \"texte r?alisations\",\n      \"resultats\": \"texte r?sultats\"\n    }\n  ],\n  \"formation\": [\n    {\"annee\": \"2018\", \"etablissement\": \"Nom ?cole\", \"diplome\": \"Titre du dipl?me\"}\n  ],\n  \"certifications\": \"texte ou vide\",\n  \"langues\": \"texte langues et niveaux\"\n}`;\n\nconst body = JSON.stringify({\n  model: \"claude-opus-4-5\",\n  max_tokens: 4096,\n  messages: [{ role: \"user\", content: prompt }]\n});\n\nreturn [{ json: { body } }];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1568,
+                                       32
+                                   ],
+                      "id":  "206a969f-e60e-49eb-9d35-ce04ea0e58ce",
+                      "name":  "Code in JavaScript1"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const text = $input.first().json.content[0].text;\n\n// Nettoyer les balises markdown si pr?sentes\nconst clean = text.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027).trim();\n\nlet cv;\ntry {\n  cv = JSON.parse(clean);\n} catch(e) {\n  throw new Error(\u0027JSON invalide : \u0027 + e.message + \u0027\\n\\nTexte re?u : \u0027 + clean);\n}\n\nreturn [{ json: { cv, email: $(\u0027Code in JavaScript\u0027).item.json.email, nom: $(\u0027Code in JavaScript\u0027).item.json.nom } }];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       2016,
+                                       32
+                                   ],
+                      "id":  "37311047-eb9b-4343-98bf-d05b7551ef3c",
+                      "name":  "Parser CV"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const d = $(\u0027Parser CV\u0027).item.json;\nconst cv = d.cv;\n\nconst competences = cv.competences\n  .map(c =\u003e `${c.titre} : ${c.detail}`)\n  .join(\u0027\\n\u0027);\n\nconst experiences = cv.experiences.map(e =\u003e\n  `${e.periode}  ${e.employeur}\\n` +\n  `   ${e.poste}\\n` +\n  `   Contexte : ${e.contexte}\\n` +\n  `   R?alisations : ${e.realisations}\\n` +\n  `   R?sultats : ${e.resultats}`\n).join(\u0027\\n\\n\u0027);\n\nconst formation = cv.formation\n  .map(f =\u003e `${f.annee}  ${f.etablissement} | ${f.diplome}`)\n  .join(\u0027\\n\u0027);\n\nconst langues_certifications =\n  `Langues : ${cv.langues}` +\n  (cv.certifications ? `\\nCertifications : ${cv.certifications}` : \u0027\u0027);\n\nconst requests = [\n  { old: \u0027{{NOM}}\u0027,                   new_val: d.nom },\n  { old: \u0027{{INFOS_PERSO}}\u0027,           new_val: \u0027\u0027 },\n  { old: \u0027{{PROFIL}}\u0027,                new_val: cv.profil },\n  { old: \u0027{{COMPETENCES}}\u0027,           new_val: competences },\n  { old: \u0027{{EXPERIENCES}}\u0027,           new_val: experiences },\n  { old: \u0027{{FORMATION}}\u0027,             new_val: formation },\n  { old: \u0027{{LANGUES_CERTIFICATIONS}}\u0027,new_val: langues_certifications },\n].map(r =\u003e ({\n  replaceAllText: {\n    containsText: { text: r.old, matchCase: true },\n    replaceText: r.new_val || \u0027\u0027\n  }\n}));\n\nreturn [{\n  json: {\n    requestsBody: JSON.stringify({ requests }),\n    nom: d.nom,\n    email: d.email,\n  }\n}];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       2224,
+                                       32
+                                   ],
+                      "id":  "b07cae15-35d0-459c-af00-abe2d563bc95",
+                      "name":  "Pr?parer replacements CV"
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "copy",
+                                         "fileId":  {
+                                                        "__rl":  true,
+                                                        "value":  "1g8c0TvOnG322m_C5es2kdaib1H-esHbkXnNczOw0r2k",
+                                                        "mode":  "id"
+                                                    },
+                                         "name":  "=CV - {{ $(\u0027Pr?parer replacements CV\u0027).item.json.nom }}",
+                                         "sameFolder":  false,
+                                         "driveId":  {
+                                                         "__rl":  true,
+                                                         "mode":  "list",
+                                                         "value":  "My Drive"
+                                                     },
+                                         "folderId":  {
+                                                          "__rl":  true,
+                                                          "value":  "1ewqPkXjGm4aZ8eU6kvCAdNDsU0mRr45V",
+                                                          "mode":  "list",
+                                                          "cachedResultName":  "Utilisateurs",
+                                                          "cachedResultUrl":  "https://drive.google.com/drive/folders/1ewqPkXjGm4aZ8eU6kvCAdNDsU0mRr45V"
+                                                      },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleDrive",
+                      "typeVersion":  3,
+                      "position":  [
+                                       2432,
+                                       32
+                                   ],
+                      "id":  "4727e8f6-0fcf-4fec-8412-7871bb1cb4c4",
+                      "name":  "Copier template CV",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "Hj4G4cE5XF9QOynW",
+                                                                       "name":  "Google Drive account 2"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://docs.googleapis.com/v1/documents/{{ $json.id }}:batchUpdate",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ $(\u0027Pr?parer replacements CV\u0027).item.json.requestsBody }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.3,
+                      "position":  [
+                                       2640,
+                                       32
+                                   ],
+                      "id":  "9970ae70-daf2-4191-9ca9-06b6d2ab87b4",
+                      "name":  "Remplir CV",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "Hj4G4cE5XF9QOynW",
+                                                                       "name":  "Google Drive account 2"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://www.googleapis.com/drive/v3/files/{{ $(\u0027Copier template CV\u0027).item.json.id }}/permissions",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={\n  \"role\": \"writer\",\n  \"type\": \"user\",\n  \"emailAddress\": \"={{ $(\u0027Pr?parer replacements CV\u0027).item.json.email }}\"\n}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.3,
+                      "position":  [
+                                       2848,
+                                       32
+                                   ],
+                      "id":  "cdc3660b-61c2-4e61-a26c-acef6438b962",
+                      "name":  "Partager CV",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "Hj4G4cE5XF9QOynW",
+                                                                       "name":  "Google Drive account 2"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "tableId":  "profils",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "email",
+                                                                                "condition":  "eq",
+                                                                                "keyValue":  "={{ $(\u0027Pr?parer replacements CV\u0027).item.json.email }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "cv_url",
+                                                                                  "fieldValue":  "=https://docs.google.com/document/d/{{ $(\u0027Copier template CV\u0027).item.json.id }}/edit"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       3056,
+                                       32
+                                   ],
+                      "id":  "246c78ce-5f10-4fac-bf93-7a7ef24a838d",
+                      "name":  "Sauvegarder lien CV",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  }
+              ],
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Code in JavaScript",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Code in JavaScript":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Get many rows",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "T?l?charger CV":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Convertir en base64",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           },
+                        "Convertir en base64":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Extraire CV",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Extraire CV":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Update a row",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Cr?er profil":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Cr?er pr?f?rences",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "If":  {
+                                   "main":  [
+                                                [
+                                                    {
+                                                        "node":  "Mettre ? jour profi",
+                                                        "type":  "main",
+                                                        "index":  0
+                                                    }
+                                                ],
+                                                [
+                                                    {
+                                                        "node":  "Cr?er profil",
+                                                        "type":  "main",
+                                                        "index":  0
+                                                    }
+                                                ]
+                                            ]
+                               },
+                        "Cr?er pr?f?rences":  {
+                                                  "main":  [
+                                                               [
+                                                                   {
+                                                                       "node":  "If1",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ]
+                                                           ]
+                                              },
+                        "Mettre ? jour profi":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Cr?er pr?f?rences",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Get many rows":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "If",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          },
+                        "If1":  {
+                                    "main":  [
+                                                 [
+                                                     {
+                                                         "node":  "T?l?charger CV",
+                                                         "type":  "main",
+                                                         "index":  0
+                                                     }
+                                                 ],
+                                                 [
+                                                     {
+                                                         "node":  "Code in JavaScript1",
+                                                         "type":  "main",
+                                                         "index":  0
+                                                     }
+                                                 ]
+                                             ]
+                                },
+                        "Code in JavaScript1":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "G?n?rer CV",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "G?n?rer CV":  {
+                                           "main":  [
+                                                        [
+                                                            {
+                                                                "node":  "Parser CV",
+                                                                "type":  "main",
+                                                                "index":  0
+                                                            }
+                                                        ]
+                                                    ]
+                                       },
+                        "Parser CV":  {
+                                          "main":  [
+                                                       [
+                                                           {
+                                                               "node":  "Pr?parer replacements CV",
+                                                               "type":  "main",
+                                                               "index":  0
+                                                           }
+                                                       ]
+                                                   ]
+                                      },
+                        "Pr?parer replacements CV":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Copier template CV",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "Copier template CV":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Remplir CV",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "Remplir CV":  {
+                                           "main":  [
+                                                        [
+                                                            {
+                                                                "node":  "Partager CV",
+                                                                "type":  "main",
+                                                                "index":  0
+                                                            }
+                                                        ]
+                                                    ]
+                                       },
+                        "Partager CV":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Sauvegarder lien CV",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "availableInMCP":  true,
+                     "callerPolicy":  "workflowsFromSameOwner"
+                 },
+    "staticData":  null,
+    "meta":  {
+                 "templateCredsSetupCompleted":  true
+             },
+    "pinData":  {
+
+                },
+    "versionId":  "d8dddf76-2c6c-4126-81a0-2ef52843c6dc",
+    "activeVersionId":  "d8dddf76-2c6c-4126-81a0-2ef52843c6dc",
+    "versionCounter":  73,
+    "triggerCount":  1,
+    "shared":  [
+                   {
+                       "updatedAt":  "2026-03-11T17:39:08.494Z",
+                       "createdAt":  "2026-03-11T17:39:08.494Z",
+                       "role":  "workflow:owner",
+                       "workflowId":  "EddlSDFtz15DWldl",
+                       "projectId":  "3aMwE0wE7NJANGge",
+                       "project":  {
+                                       "updatedAt":  "2025-09-19T17:05:57.000Z",
+                                       "createdAt":  "2025-09-19T17:05:31.882Z",
+                                       "id":  "3aMwE0wE7NJANGge",
+                                       "name":  "Analyse de ciblage électoral pour votation",
+                                       "type":  "team",
+                                       "icon":  {
+                                                    "type":  "icon",
+                                                    "value":  "layers"
+                                                },
+                                       "description":  "",
+                                       "projectRelations":  [
+                                                                {
+                                                                    "updatedAt":  "2025-09-19T17:05:57.079Z",
+                                                                    "createdAt":  "2025-09-19T17:05:57.079Z",
+                                                                    "userId":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
+                                                                    "projectId":  "3aMwE0wE7NJANGge",
+                                                                    "user":  {
+                                                                                 "updatedAt":  "2026-03-29T22:03:01.000Z",
+                                                                                 "createdAt":  "2025-09-19T17:04:47.495Z",
+                                                                                 "id":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
+                                                                                 "email":  "paul.zurkinden@yahoo.com",
+                                                                                 "firstName":  "Paul",
+                                                                                 "lastName":  "Zurkinden",
+                                                                                 "personalizationAnswers":  null,
+                                                                                 "settings":  {
+                                                                                                  "userActivated":  true,
+                                                                                                  "firstSuccessfulWorkflowId":  "Ihoi3ApwrTIlnarI",
+                                                                                                  "userActivatedAt":  1759094160476,
+                                                                                                  "npsSurvey":  {
+                                                                                                                    "responded":  true,
+                                                                                                                    "lastShownAt":  1771262327971
+                                                                                                                },
+                                                                                                  "dismissedCallouts":  {
+                                                                                                                            "preBuiltAgentsModalCallout":  true
+                                                                                                                        },
+                                                                                                  "easyAIWorkflowOnboarded":  true,
+                                                                                                  "userClaimedAiCredits":  true
+                                                                                              },
+                                                                                 "disabled":  false,
+                                                                                 "mfaEnabled":  false,
+                                                                                 "lastActiveAt":  "2026-03-29",
+                                                                                 "isPending":  false
+                                                                             }
+                                                                }
+                                                            ]
+                                   }
+                   }
+               ],
+    "tags":  [
+
+             ],
+    "activeVersion":  {
+                          "updatedAt":  "2026-03-30T11:15:53.049Z",
+                          "createdAt":  "2026-03-30T11:15:53.049Z",
+                          "versionId":  "d8dddf76-2c6c-4126-81a0-2ef52843c6dc",
+                          "workflowId":  "EddlSDFtz15DWldl",
+                          "nodes":  [
+                                        {
+                                            "parameters":  {
+                                                               "httpMethod":  "POST",
+                                                               "path":  "f1fea724-e392-473d-963a-49cf3207f5cf",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.webhook",
+                                            "typeVersion":  2.1,
+                                            "position":  [
+                                                             0,
+                                                             -64
+                                                         ],
+                                            "id":  "54f311c1-3431-4d1f-b76c-416bc9397790",
+                                            "name":  "Webhook",
+                                            "webhookId":  "f1fea724-e392-473d-963a-49cf3207f5cf"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "const body = $input.first().json.body;\nconst fields = body.data.fields;\n\nfunction resolveOptions(field) {\n  if (!field || !field.value) return \u0027\u0027;\n  const values = Array.isArray(field.value) ? field.value : [field.value];\n  return values.map(id =\u003e {\n    const opt = field.options?.find(o =\u003e o.id === id);\n    return opt ? opt.text : id;\n  }).join(\u0027, \u0027);\n}\n\nfunction getField(label) {\n  return fields.find(f =\u003e f.label === label);\n}\n\nfunction getFieldByKey(key) {\n  return fields.find(f =\u003e f.key === key);\n}\n\n// Champs de base\nconst nom = getField(\u0027Pr?nom et Nom\u0027)?.value || \u0027\u0027;\nconst email = getField(\u0027Email\u0027)?.value || \u0027\u0027;\nconst poste_actuel = getField(\u0027Poste actuel ou dernier poste\u0027)?.value || \u0027\u0027;\nconst annees_exp = getField(\"Ann?es d\u0027exp?rience\")?.value || 0;\nconst secteurs_base = getField(\"Secteurs d\u0027activit?\")?.value || \u0027\u0027;\nconst formations_base = getField(\u0027Formations / dipl?mes\u0027)?.value || \u0027\u0027;\nconst langues_base = getField(\u0027Langues et niveaux\u0027)?.value || \u0027\u0027;\nconst poste_cible = getField(\u0027Poste recherch?\u0027)?.value || \u0027\u0027;\nconst cantons = resolveOptions(getField(\u0027Cantons souhait?s\u0027));\nconst contrats = resolveOptions(getField(\u0027Type de contrat\u0027));\nconst taux = resolveOptions(getField(\u0027Taux de travail souhait?\u0027));\n\nconst cvField = getField(\u0027Votre CV (optionnel)\u0027);\nconst cv_url = cvField?.value?.[0]?.url || \u0027\u0027;\nconst cv_nom = cvField?.value?.[0]?.name || \u0027\u0027;\nconst has_cv = cv_url !== \u0027\u0027;\n\n// Champs sans CV - projet professionnel\nconst role_vise = getField(\u0027Quel poste ou type de r?le visez-vous ?\u0027)?.value || \u0027\u0027;\nconst motivation = getField(\"Qu\u0027est-ce qui vous motive dans ce type de poste ?\")?.value || \u0027\u0027;\n\n// Secteurs cibles (checkboxes)\nconst secteursField = getField(\"Dans quel(s) secteur(s) souhaitez-vous travailler ? \");\nconst secteurs_cibles = secteursField?.options\n  ?.filter(o =\u003e secteursField.value?.includes(o.id) \u0026\u0026 o.text)\n  .map(o =\u003e o.text).join(\u0027, \u0027) || \u0027\u0027;\n\n// Exp?riences (3 blocs)\nconst expKeys = [\n  { employeur: \u0027question_PAN7p1\u0027, lieu: \u0027question_EPG2Kl\u0027, poste: \u0027question_rlQe5o\u0027, periode: \u0027question_42YMQr\u0027, contexte: \u0027question_jBrjZQ\u0027, missions: \u0027question_24YpXe\u0027, resultat: \u0027question_xd7Ard\u0027 },\n  { employeur: \u0027question_NAxar0\u0027, lieu: \u0027question_qbq9LO\u0027, poste: \u0027question_QAqb1Y\u0027, periode: \u0027question_9dY8BE\u0027, contexte: \u0027question_eBGVMx\u0027, missions: \u0027question_WA6L2e\u0027, resultat: \u0027question_aB1R9Z\u0027 },\n  { employeur: \u0027question_7dYyqa\u0027, lieu: \u0027question_blMoq6\u0027, poste: \u0027question_AlYEzy\u0027, periode: \u0027question_BGYrae\u0027, contexte: \u0027question_kY42lr\u0027, missions: \u0027question_vNalMg\u0027, resultat: \u0027question_KM49zg\u0027 },\n];\n\nconst experiences = expKeys\n  .map(keys =\u003e ({\n    employeur: getFieldByKey(keys.employeur)?.value || \u0027\u0027,\n    lieu: getFieldByKey(keys.lieu)?.value || \u0027\u0027,\n    poste: getFieldByKey(keys.poste)?.value || \u0027\u0027,\n    periode: getFieldByKey(keys.periode)?.value || \u0027\u0027,\n    contexte: getFieldByKey(keys.contexte)?.value || \u0027\u0027,\n    missions: getFieldByKey(keys.missions)?.value || \u0027\u0027,\n    resultat: getFieldByKey(keys.resultat)?.value || \u0027\u0027,\n  }))\n  .filter(e =\u003e e.employeur); // Garde uniquement les exp?riences remplies\n\n// Formation et certifications\nconst diplomes = getField(\u0027Dipl?me(s) obtenu(s)\u0027)?.value || \u0027\u0027;\nconst certifications = getField(\u0027Formations continues ou certifications\u0027)?.value || \u0027\u0027;\n\n// Langues (Matrix)\nconst languesMatrix = fields.find(f =\u003e f.label?.includes(\u0027Quelles langues\u0027));\nlet langues_structurees = \u0027\u0027;\nif (languesMatrix?.value \u0026\u0026 languesMatrix.rows \u0026\u0026 languesMatrix.columns) {\n  langues_structurees = languesMatrix.rows\n    .map(row =\u003e {\n      const colIds = languesMatrix.value[row.id];\n      if (!colIds || !colIds.length) return null;\n      const niveau = languesMatrix.columns.find(c =\u003e c.id === colIds[0])?.text || \u0027\u0027;\n      return niveau === \u0027Notions (A1-A2)\u0027 ? null : `${row.text} : ${niveau}`;\n    })\n    .filter(Boolean)\n    .join(\u0027, \u0027);\n}\n\nreturn [{\n  json: {\n    nom, email, poste_actuel, annees_exp, secteurs_base,\n    formations_base, langues_base, poste_cible, cantons,\n    contrats, taux, cv_url, cv_nom, has_cv,\n    role_vise, motivation, secteurs_cibles,\n    experiences, diplomes, certifications, langues_structurees,\n  },\n}];"
+                                                           },
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             224,
+                                                             -64
+                                                         ],
+                                            "id":  "eda5100d-42ee-49d1-85e8-533ba1d20fdd",
+                                            "name":  "Code in JavaScript"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "tableId":  "preferences_recherche",
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "poste_cible",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.poste_cible }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "localisation",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cantons }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "type_contrat",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.contrats }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "salaire_min",
+                                                                                                        "fieldValue":  "0"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "typeVersion":  1,
+                                            "position":  [
+                                                             1120,
+                                                             -64
+                                                         ],
+                                            "id":  "022bfff2-f7e9-499b-925b-c3e9670dd9cd",
+                                            "name":  "Cr?er pr?f?rences",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "url":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}",
+                                                               "options":  {
+                                                                               "response":  {
+                                                                                                "response":  {
+                                                                                                                 "responseFormat":  "file"
+                                                                                                             }
+                                                                                            }
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "typeVersion":  4.3,
+                                            "position":  [
+                                                             1568,
+                                                             -160
+                                                         ],
+                                            "id":  "889efeb8-67c3-4b51-a206-bd83c15562b0",
+                                            "name":  "T?l?charger CV"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.anthropic.com/v1/messages",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "anthropicApi",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "anthropic-version",
+                                                                                                               "value":  "2023-06-01"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "contentType":  "raw",
+                                                               "rawContentType":  "application/json",
+                                                               "body":  "={{ $json.body }}",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "typeVersion":  4.3,
+                                            "position":  [
+                                                             2016,
+                                                             -160
+                                                         ],
+                                            "id":  "4aeb8810-e039-4cab-be31-10c4c70963a9",
+                                            "name":  "Extraire CV",
+                                            "credentials":  {
+                                                                "anthropicApi":  {
+                                                                                     "id":  "Jzb8eFBziiNh4ceR",
+                                                                                     "name":  "Anthropic account"
+                                                                                 }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "const binaryData = await this.helpers.getBinaryDataBuffer(0, \u0027data\u0027);\nconst base64 = binaryData.toString(\u0027base64\u0027);\n\nconst body = JSON.stringify({\n  model: \"claude-opus-4-5\",\n  max_tokens: 2048,\n  messages: [\n    {\n      role: \"user\",\n      content: [\n        {\n          type: \"document\",\n          source: {\n            type: \"base64\",\n            media_type: \"application/pdf\",\n            data: base64,\n          },\n        },\n        {\n          type: \"text\",\n          text: \"Voici un CV en PDF. Extrais et structure les informations suivantes en texte clair :\\n- Nom complet\\n- Poste actuel / dernier poste\\n- Ann?es d\u0027exp?rience totales\\n- Secteurs d\u0027activit?\\n- Formations et dipl?mes\\n- Langues et niveaux\\n- Comp?tences cl?s\\n- Exp?riences professionnelles (entreprise, poste, dur?e, missions principales)\\n\\nR?ponds uniquement avec le texte structur?, sans commentaire.\",\n        },\n      ],\n    },\n  ],\n});\n\nreturn [{\n  json: {\n    body,\n  },\n}];"
+                                                           },
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             1792,
+                                                             -160
+                                                         ],
+                                            "id":  "97556712-e138-45fd-abb9-8037aded088b",
+                                            "name":  "Convertir en base64"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "update",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "email",
+                                                                                                      "condition":  "eq",
+                                                                                                      "keyValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "cv_texte",
+                                                                                                        "fieldValue":  "={{ $(\u0027Extraire CV\u0027).item.json.content[0].text }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "typeVersion":  1,
+                                            "position":  [
+                                                             2240,
+                                                             -160
+                                                         ],
+                                            "id":  "4ddbb7d3-6b2d-468a-a634-615e6c5333b1",
+                                            "name":  "Update a row",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "tableId":  "profils",
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "nom",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.nom }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "email",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "plan",
+                                                                                                        "fieldValue":  "starter"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "description_libre",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.poste_actuel }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "cv_texte",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "annees_exp",
+                                                                                                        "fieldValue":  "={{ parseInt($(\u0027Code in JavaScript\u0027).item.json.annees_exp) || 0 }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "typeVersion":  1,
+                                            "position":  [
+                                                             896,
+                                                             32
+                                                         ],
+                                            "id":  "c09c011b-47e1-4044-94e7-35b3cedfe739",
+                                            "name":  "Cr?er profil",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "conditions":  {
+                                                                                  "options":  {
+                                                                                                  "caseSensitive":  true,
+                                                                                                  "leftValue":  "",
+                                                                                                  "typeValidation":  "strict",
+                                                                                                  "version":  3
+                                                                                              },
+                                                                                  "conditions":  [
+                                                                                                     {
+                                                                                                         "id":  "fdbb3c0b-3653-4829-8e88-dbfe83375989",
+                                                                                                         "leftValue":  "={{ $json.email }}",
+                                                                                                         "rightValue":  "",
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "string",
+                                                                                                                          "operation":  "notEmpty",
+                                                                                                                          "singleValue":  true
+                                                                                                                      }
+                                                                                                     }
+                                                                                                 ],
+                                                                                  "combinator":  "and"
+                                                                              },
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.if",
+                                            "typeVersion":  2.3,
+                                            "position":  [
+                                                             672,
+                                                             -64
+                                                         ],
+                                            "id":  "55064af3-3625-47c1-9ce5-72bf7995fde3",
+                                            "name":  "If"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "update",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "email",
+                                                                                                      "condition":  "eq",
+                                                                                                      "keyValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "nom",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.nom }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "description_libre",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.poste_actuel }} | {{ $(\u0027Code in JavaScript\u0027).item.json.annees_exp }} ans | {{ $(\u0027Code in JavaScript\u0027).item.json.secteurs }} | {{ $(\u0027Code in JavaScript\u0027).item.json.formations }} | {{ $(\u0027Code in JavaScript\u0027).item.json.langues }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "cv_texte",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "annees_exp",
+                                                                                                        "fieldValue":  "={{ parseInt($(\u0027Code in JavaScript\u0027).item.json.annees_exp) || 0 }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "typeVersion":  1,
+                                            "position":  [
+                                                             896,
+                                                             -160
+                                                         ],
+                                            "id":  "ab64f042-5a69-4c06-b773-bb282d735503",
+                                            "name":  "Mettre ? jour profi",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "getAll",
+                                                               "tableId":  "profils",
+                                                               "limit":  1,
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "email",
+                                                                                                      "condition":  "eq",
+                                                                                                      "keyValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.email }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "typeVersion":  1,
+                                            "position":  [
+                                                             448,
+                                                             -64
+                                                         ],
+                                            "id":  "d360a437-724f-44e3-bde3-0b28d0f2df6a",
+                                            "name":  "Get many rows",
+                                            "alwaysOutputData":  true,
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "conditions":  {
+                                                                                  "options":  {
+                                                                                                  "caseSensitive":  true,
+                                                                                                  "leftValue":  "",
+                                                                                                  "typeValidation":  "strict",
+                                                                                                  "version":  3
+                                                                                              },
+                                                                                  "conditions":  [
+                                                                                                     {
+                                                                                                         "id":  "1764aad4-cd41-4a4f-ab2a-e53041b8b1b2",
+                                                                                                         "leftValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.cv_url }}",
+                                                                                                         "rightValue":  "",
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "string",
+                                                                                                                          "operation":  "notEmpty",
+                                                                                                                          "singleValue":  true
+                                                                                                                      }
+                                                                                                     }
+                                                                                                 ],
+                                                                                  "combinator":  "and"
+                                                                              },
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.if",
+                                            "typeVersion":  2.3,
+                                            "position":  [
+                                                             1344,
+                                                             -64
+                                                         ],
+                                            "id":  "8141bc8f-26c1-4f2e-b39b-df31658c06fc",
+                                            "name":  "If1"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.anthropic.com/v1/messages",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "anthropicApi",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "anthropic-version",
+                                                                                                               "value":  "2023-06-01"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ $json.body }}",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "typeVersion":  4.3,
+                                            "position":  [
+                                                             1792,
+                                                             32
+                                                         ],
+                                            "id":  "4bdf51b0-ab8d-49a5-976f-e3c354dbdd60",
+                                            "name":  "G?n?rer CV",
+                                            "credentials":  {
+                                                                "anthropicApi":  {
+                                                                                     "id":  "Jzb8eFBziiNh4ceR",
+                                                                                     "name":  "Anthropic account"
+                                                                                 }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "const d = $(\u0027Code in JavaScript\u0027).item.json;\n\n// Construire le texte des exp?riences\nconst expTexte = d.experiences.map((e, i) =\u003e `\nExp?rience ${i + 1} :\n- Employeur : ${e.employeur}\n- Lieu : ${e.lieu}\n- Poste : ${e.poste}\n- P?riode : ${e.periode}\n- Contexte : ${e.contexte}\n- Missions : ${e.missions}\n- R?sultat : ${e.resultat}\n`).join(\u0027\\n\u0027);\n\nconst prompt = `Tu es un expert en r?daction de CV professionnels. \nG?n?re un CV complet et professionnel en fran?ais pour la personne suivante.\n\nDONN?ES DU CANDIDAT :\n- Nom : ${d.nom}\n- Poste vis? : ${d.role_vise || d.poste_cible}\n- Motivation : ${d.motivation}\n- Secteurs cibles : ${d.secteurs_cibles}\n- Ann?es d\u0027exp?rience : ${d.annees_exp}\n- Langues : ${d.langues_structurees || d.langues_base}\n- Dipl?mes : ${d.diplomes}\n- Certifications : ${d.certifications}\n\nEXP?RIENCES PROFESSIONNELLES :\n${expTexte}\n\nINSTRUCTIONS :\nG?n?re un CV structur? avec les sections suivantes dans cet ordre exact :\n1. PROFIL - 3 ? 5 phrases synth?tisant l\u0027expertise, les ann?es d\u0027exp?rience et la valeur ajout?e du candidat\n2. COMP?TENCES CL?S - 4 comp?tences principales avec une ligne de d?tail chacune\n3. EXP?RIENCE PROFESSIONNELLE - Pour chaque exp?rience : employeur en majuscules, lieu, poste en gras, p?riode, puis sous-sections Contexte / R?alisations / R?sultats\n4. FORMATION - dipl?mes avec ann?e et ?tablissement\n5. CERTIFICATIONS - si applicable\n6. LANGUES - avec niveaux\n\nR?ponds UNIQUEMENT avec un JSON valide sans aucun texte autour, sans balises markdown, strictement ce format :\n{\n  \"profil\": \"texte du profil\",\n  \"competences\": [\n    {\"titre\": \"Comp?tence 1\", \"detail\": \"description\"},\n    {\"titre\": \"Comp?tence 2\", \"detail\": \"description\"},\n    {\"titre\": \"Comp?tence 3\", \"detail\": \"description\"},\n    {\"titre\": \"Comp?tence 4\", \"detail\": \"description\"}\n  ],\n  \"experiences\": [\n    {\n      \"employeur\": \"NOM EMPLOYEUR\",\n      \"lieu\": \"Ville\",\n      \"poste\": \"Intitul? du poste\",\n      \"periode\": \"2020 - aujourd\u0027hui\",\n      \"contexte\": \"texte contexte\",\n      \"realisations\": \"texte r?alisations\",\n      \"resultats\": \"texte r?sultats\"\n    }\n  ],\n  \"formation\": [\n    {\"annee\": \"2018\", \"etablissement\": \"Nom ?cole\", \"diplome\": \"Titre du dipl?me\"}\n  ],\n  \"certifications\": \"texte ou vide\",\n  \"langues\": \"texte langues et niveaux\"\n}`;\n\nconst body = JSON.stringify({\n  model: \"claude-opus-4-5\",\n  max_tokens: 4096,\n  messages: [{ role: \"user\", content: prompt }]\n});\n\nreturn [{ json: { body } }];"
+                                                           },
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             1568,
+                                                             32
+                                                         ],
+                                            "id":  "206a969f-e60e-49eb-9d35-ce04ea0e58ce",
+                                            "name":  "Code in JavaScript1"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "const text = $input.first().json.content[0].text;\n\n// Nettoyer les balises markdown si pr?sentes\nconst clean = text.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027).trim();\n\nlet cv;\ntry {\n  cv = JSON.parse(clean);\n} catch(e) {\n  throw new Error(\u0027JSON invalide : \u0027 + e.message + \u0027\\n\\nTexte re?u : \u0027 + clean);\n}\n\nreturn [{ json: { cv, email: $(\u0027Code in JavaScript\u0027).item.json.email, nom: $(\u0027Code in JavaScript\u0027).item.json.nom } }];"
+                                                           },
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             2016,
+                                                             32
+                                                         ],
+                                            "id":  "37311047-eb9b-4343-98bf-d05b7551ef3c",
+                                            "name":  "Parser CV"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "const d = $(\u0027Parser CV\u0027).item.json;\nconst cv = d.cv;\n\nconst competences = cv.competences\n  .map(c =\u003e `${c.titre} : ${c.detail}`)\n  .join(\u0027\\n\u0027);\n\nconst experiences = cv.experiences.map(e =\u003e\n  `${e.periode}  ${e.employeur}\\n` +\n  `   ${e.poste}\\n` +\n  `   Contexte : ${e.contexte}\\n` +\n  `   R?alisations : ${e.realisations}\\n` +\n  `   R?sultats : ${e.resultats}`\n).join(\u0027\\n\\n\u0027);\n\nconst formation = cv.formation\n  .map(f =\u003e `${f.annee}  ${f.etablissement} | ${f.diplome}`)\n  .join(\u0027\\n\u0027);\n\nconst langues_certifications =\n  `Langues : ${cv.langues}` +\n  (cv.certifications ? `\\nCertifications : ${cv.certifications}` : \u0027\u0027);\n\nconst requests = [\n  { old: \u0027{{NOM}}\u0027,                   new_val: d.nom },\n  { old: \u0027{{INFOS_PERSO}}\u0027,           new_val: \u0027\u0027 },\n  { old: \u0027{{PROFIL}}\u0027,                new_val: cv.profil },\n  { old: \u0027{{COMPETENCES}}\u0027,           new_val: competences },\n  { old: \u0027{{EXPERIENCES}}\u0027,           new_val: experiences },\n  { old: \u0027{{FORMATION}}\u0027,             new_val: formation },\n  { old: \u0027{{LANGUES_CERTIFICATIONS}}\u0027,new_val: langues_certifications },\n].map(r =\u003e ({\n  replaceAllText: {\n    containsText: { text: r.old, matchCase: true },\n    replaceText: r.new_val || \u0027\u0027\n  }\n}));\n\nreturn [{\n  json: {\n    requestsBody: JSON.stringify({ requests }),\n    nom: d.nom,\n    email: d.email,\n  }\n}];"
+                                                           },
+                                            "type":  "n8n-nodes-base.code",
+                                            "typeVersion":  2,
+                                            "position":  [
+                                                             2224,
+                                                             32
+                                                         ],
+                                            "id":  "b07cae15-35d0-459c-af00-abe2d563bc95",
+                                            "name":  "Pr?parer replacements CV"
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "copy",
+                                                               "fileId":  {
+                                                                              "__rl":  true,
+                                                                              "value":  "1g8c0TvOnG322m_C5es2kdaib1H-esHbkXnNczOw0r2k",
+                                                                              "mode":  "id"
+                                                                          },
+                                                               "name":  "=CV - {{ $(\u0027Pr?parer replacements CV\u0027).item.json.nom }}",
+                                                               "sameFolder":  false,
+                                                               "driveId":  {
+                                                                               "__rl":  true,
+                                                                               "mode":  "list",
+                                                                               "value":  "My Drive"
+                                                                           },
+                                                               "folderId":  {
+                                                                                "__rl":  true,
+                                                                                "value":  "1ewqPkXjGm4aZ8eU6kvCAdNDsU0mRr45V",
+                                                                                "mode":  "list",
+                                                                                "cachedResultName":  "Utilisateurs",
+                                                                                "cachedResultUrl":  "https://drive.google.com/drive/folders/1ewqPkXjGm4aZ8eU6kvCAdNDsU0mRr45V"
+                                                                            },
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.googleDrive",
+                                            "typeVersion":  3,
+                                            "position":  [
+                                                             2432,
+                                                             32
+                                                         ],
+                                            "id":  "4727e8f6-0fcf-4fec-8412-7871bb1cb4c4",
+                                            "name":  "Copier template CV",
+                                            "credentials":  {
+                                                                "googleDriveOAuth2Api":  {
+                                                                                             "id":  "Hj4G4cE5XF9QOynW",
+                                                                                             "name":  "Google Drive account 2"
+                                                                                         }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "=https://docs.googleapis.com/v1/documents/{{ $json.id }}:batchUpdate",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "googleDriveOAuth2Api",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ $(\u0027Pr?parer replacements CV\u0027).item.json.requestsBody }}",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "typeVersion":  4.3,
+                                            "position":  [
+                                                             2640,
+                                                             32
+                                                         ],
+                                            "id":  "9970ae70-daf2-4191-9ca9-06b6d2ab87b4",
+                                            "name":  "Remplir CV",
+                                            "credentials":  {
+                                                                "googleDriveOAuth2Api":  {
+                                                                                             "id":  "Hj4G4cE5XF9QOynW",
+                                                                                             "name":  "Google Drive account 2"
+                                                                                         }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "=https://www.googleapis.com/drive/v3/files/{{ $(\u0027Copier template CV\u0027).item.json.id }}/permissions",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "googleDriveOAuth2Api",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={\n  \"role\": \"writer\",\n  \"type\": \"user\",\n  \"emailAddress\": \"={{ $(\u0027Pr?parer replacements CV\u0027).item.json.email }}\"\n}",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "typeVersion":  4.3,
+                                            "position":  [
+                                                             2848,
+                                                             32
+                                                         ],
+                                            "id":  "cdc3660b-61c2-4e61-a26c-acef6438b962",
+                                            "name":  "Partager CV",
+                                            "credentials":  {
+                                                                "googleDriveOAuth2Api":  {
+                                                                                             "id":  "Hj4G4cE5XF9QOynW",
+                                                                                             "name":  "Google Drive account 2"
+                                                                                         }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "update",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "email",
+                                                                                                      "condition":  "eq",
+                                                                                                      "keyValue":  "={{ $(\u0027Pr?parer replacements CV\u0027).item.json.email }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "cv_url",
+                                                                                                        "fieldValue":  "=https://docs.google.com/document/d/{{ $(\u0027Copier template CV\u0027).item.json.id }}/edit"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "typeVersion":  1,
+                                            "position":  [
+                                                             3056,
+                                                             32
+                                                         ],
+                                            "id":  "246c78ce-5f10-4fac-bf93-7a7ef24a838d",
+                                            "name":  "Sauvegarder lien CV",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            }
+                                        }
+                                    ],
+                          "connections":  {
+                                              "Webhook":  {
+                                                              "main":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "Code in JavaScript",
+                                                                                   "type":  "main",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                          },
+                                              "Code in JavaScript":  {
+                                                                         "main":  [
+                                                                                      [
+                                                                                          {
+                                                                                              "node":  "Get many rows",
+                                                                                              "type":  "main",
+                                                                                              "index":  0
+                                                                                          }
+                                                                                      ]
+                                                                                  ]
+                                                                     },
+                                              "T?l?charger CV":  {
+                                                                     "main":  [
+                                                                                  [
+                                                                                      {
+                                                                                          "node":  "Convertir en base64",
+                                                                                          "type":  "main",
+                                                                                          "index":  0
+                                                                                      }
+                                                                                  ]
+                                                                              ]
+                                                                 },
+                                              "Convertir en base64":  {
+                                                                          "main":  [
+                                                                                       [
+                                                                                           {
+                                                                                               "node":  "Extraire CV",
+                                                                                               "type":  "main",
+                                                                                               "index":  0
+                                                                                           }
+                                                                                       ]
+                                                                                   ]
+                                                                      },
+                                              "Extraire CV":  {
+                                                                  "main":  [
+                                                                               [
+                                                                                   {
+                                                                                       "node":  "Update a row",
+                                                                                       "type":  "main",
+                                                                                       "index":  0
+                                                                                   }
+                                                                               ]
+                                                                           ]
+                                                              },
+                                              "Cr?er profil":  {
+                                                                   "main":  [
+                                                                                [
+                                                                                    {
+                                                                                        "node":  "Cr?er pr?f?rences",
+                                                                                        "type":  "main",
+                                                                                        "index":  0
+                                                                                    }
+                                                                                ]
+                                                                            ]
+                                                               },
+                                              "If":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Mettre ? jour profi",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ],
+                                                                      [
+                                                                          {
+                                                                              "node":  "Cr?er profil",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                                              "Cr?er pr?f?rences":  {
+                                                                        "main":  [
+                                                                                     [
+                                                                                         {
+                                                                                             "node":  "If1",
+                                                                                             "type":  "main",
+                                                                                             "index":  0
+                                                                                         }
+                                                                                     ]
+                                                                                 ]
+                                                                    },
+                                              "Mettre ? jour profi":  {
+                                                                          "main":  [
+                                                                                       [
+                                                                                           {
+                                                                                               "node":  "Cr?er pr?f?rences",
+                                                                                               "type":  "main",
+                                                                                               "index":  0
+                                                                                           }
+                                                                                       ]
+                                                                                   ]
+                                                                      },
+                                              "Get many rows":  {
+                                                                    "main":  [
+                                                                                 [
+                                                                                     {
+                                                                                         "node":  "If",
+                                                                                         "type":  "main",
+                                                                                         "index":  0
+                                                                                     }
+                                                                                 ]
+                                                                             ]
+                                                                },
+                                              "If1":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "T?l?charger CV",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ],
+                                                                       [
+                                                                           {
+                                                                               "node":  "Code in JavaScript1",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ]
+                                                      },
+                                              "Code in JavaScript1":  {
+                                                                          "main":  [
+                                                                                       [
+                                                                                           {
+                                                                                               "node":  "G?n?rer CV",
+                                                                                               "type":  "main",
+                                                                                               "index":  0
+                                                                                           }
+                                                                                       ]
+                                                                                   ]
+                                                                      },
+                                              "G?n?rer CV":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Parser CV",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                                              "Parser CV":  {
+                                                                "main":  [
+                                                                             [
+                                                                                 {
+                                                                                     "node":  "Pr?parer replacements CV",
+                                                                                     "type":  "main",
+                                                                                     "index":  0
+                                                                                 }
+                                                                             ]
+                                                                         ]
+                                                            },
+                                              "Pr?parer replacements CV":  {
+                                                                               "main":  [
+                                                                                            [
+                                                                                                {
+                                                                                                    "node":  "Copier template CV",
+                                                                                                    "type":  "main",
+                                                                                                    "index":  0
+                                                                                                }
+                                                                                            ]
+                                                                                        ]
+                                                                           },
+                                              "Copier template CV":  {
+                                                                         "main":  [
+                                                                                      [
+                                                                                          {
+                                                                                              "node":  "Remplir CV",
+                                                                                              "type":  "main",
+                                                                                              "index":  0
+                                                                                          }
+                                                                                      ]
+                                                                                  ]
+                                                                     },
+                                              "Remplir CV":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Partager CV",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                                              "Partager CV":  {
+                                                                  "main":  [
+                                                                               [
+                                                                                   {
+                                                                                       "node":  "Sauvegarder lien CV",
+                                                                                       "type":  "main",
+                                                                                       "index":  0
+                                                                                   }
+                                                                               ]
+                                                                           ]
+                                                              }
+                                          },
+                          "authors":  "Paul Zurkinden",
+                          "name":  null,
+                          "description":  null
+                      }
+}
