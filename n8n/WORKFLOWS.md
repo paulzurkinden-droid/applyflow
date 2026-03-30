@@ -3,35 +3,31 @@
 ## Overview
 
 ApplyFlow uses 5 n8n Cloud workflows to automate the job search process.
-All workflows run on: https://p2urkinden.app.n8n.cloud
+
+> **Security note (BUG-009):** Webhook paths are secrets — regenerate any exposed webhook URL
+> via n8n UI (Webhook node > regenerate path) if this repo becomes public.
+> Never commit raw webhook UUIDs to version control.
 
 ---
 
 ## WF-A — Onboarding Utilisateur
-- **ID:** `EddlSDFtz15DWldl`
-- **Status:** ✅ ACTIVE
-- **Trigger:** Webhook (called by Stripe or direct API)
-- **Purpose:** Creates the user profile in Supabase after signup
+- **Status:** Active
+- **Trigger:** Webhook (called by Tally form on profile submission)
+- **Purpose:** Creates/updates the user profile in Supabase after Tally form submission
 - **Do not modify** — already stable and active
 
 ---
 
 ## WF-B — Alertes Offres Emploi
-- **ID:** `IfrDW7U3g7yzxr1d`
-- **Status:** ✅ ACTIVE
+- **Status:** Active
 - **Trigger:** Cron — every day at 08:00 and 18:00
-- **Purpose:** 
+- **Purpose:**
   1. Fetches all active user profiles and their job preferences
   2. Scrapes job offers from Adzuna, Confederation (RSS), and Jobup (RSS)
   3. Scores each offer using Claude AI (1–10)
   4. Saves all offers ≥1 to `offres_alertes` table
-  5. Sends email digest via Resend for offers scoring ≥7
-- **Key nodes:**
-  - `HTTP - Fetch Adzuna` — Adzuna REST API
-  - `HTTP - Fetch RSS Confédération` — Swiss confederation job RSS
-  - `HTTP - Fetch RSS Jobup` — Jobup RSS feed
-  - `HTTP - Claude Scoring` — Anthropic Claude for relevance scoring
-  - `HTTP - Envoyer alerte Resend` — sends digest email
+  5. Sends ONE digest email per user (for offers scoring ≥7)
+- **Env vars required:** `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` (set in n8n Cloud > Settings > Environment Variables)
 
 ### How to test WF-B
 ```
@@ -43,31 +39,31 @@ All workflows run on: https://p2urkinden.app.n8n.cloud
 
 ---
 
-## WF-C — Génération Lettre de Motivation
-- **ID:** `m6voz15eYd38v4Ax`
-- **Status:** ✅ ACTIVE
-- **Trigger:** Webhook — `POST /webhook/generate-lm`
-- **Webhook URL:** `https://p2urkinden.app.n8n.cloud/webhook/generate-lm`
+## WF-C — Generation Lettre de Motivation
+- **Status:** Active
+- **Trigger:** Webhook POST `/webhook/generate-lm`
+- **Webhook URL:** `https://[YOUR_N8N_INSTANCE]/webhook/generate-lm`
 - **Purpose:**
-  1. Receives request with `user_id`, `offre_id`, optionally `cv_texte`
-  2. Validates request and checks plan (Pro or Booster required)
-  3. Fetches user profile and job preferences from Supabase
+  1. Validates request (user_id, titre_poste, entreprise, description_offre)
+  2. Checks plan: **Pro or Booster required** — returns 403 for Starter/inactive accounts
+  3. Fetches user profile and preferences from Supabase
   4. Generates cover letter using Claude AI
-  5. Copies Google Docs template and fills in the letter
-  6. Shares document and logs candidature in Supabase
-  7. Sends cover letter by email via Resend
+  5. Copies Google Docs template and fills placeholders
+  6. Shares document with user and logs candidature in Supabase
+  7. Sends cover letter link by email via Resend
   8. Returns JSON with `candidature_id`, `lm_url`, `email_sent`
-- **Access control:** Only `pro` and `booster` plans can use this endpoint
 
 ### Request format
 ```json
-POST https://p2urkinden.app.n8n.cloud/webhook/generate-lm
+POST /webhook/generate-lm
 Content-Type: application/json
 
 {
   "user_id": "uuid-of-profile",
-  "offre_id": "uuid-of-offre-alerte",
-  "cv_texte": "optional override CV text"
+  "titre_poste": "Chef de projet digital",
+  "entreprise": "Etat de Vaud",
+  "url_offre": "https://jobs.example.ch/xxx",
+  "description_offre": "Description du poste..."
 }
 ```
 
@@ -76,96 +72,90 @@ Content-Type: application/json
 {
   "success": true,
   "candidature_id": "uuid",
-  "lm_url": "https://docs.google.com/...",
+  "lm_url": "https://docs.google.com/document/d/xxx/edit",
   "email_sent": true
 }
 ```
 
 ### Error responses
 - `422` — Missing required fields
-- `403` — Plan insuffisant (starter plan)
-
-### How to test WF-C
-```bash
-curl -X POST https://p2urkinden.app.n8n.cloud/webhook/generate-lm \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": "<profile-uuid>", "offre_id": "<offre-uuid>"}'
-```
+- `403` — Plan insuffisant (Starter plan or inactive account)
 
 ---
 
 ## WF-D — CRM Candidatures
-- **ID:** `PGCPbeGDdBlmPF4X`
-- **Status:** ✅ ACTIVE
-- **Trigger:** Webhook or Supabase trigger (based on workflow configuration)
-- **Purpose:** Manages the candidature pipeline — status updates, reminders, tracking
-- **Key nodes:** Supabase CRUD on `candidatures` table
+- **Status:** Active
+- **Trigger:** Webhook POST `/webhook/update-candidature`
+- **Webhook URL:** `https://[YOUR_N8N_INSTANCE]/webhook/update-candidature`
+- **Purpose:** Updates candidature status in the `candidatures` Supabase table
 
-### How to test WF-D
-```
-# Trigger manually from n8n UI
-# Or via configured webhook/trigger
-# Check candidatures table in Supabase
+### Request format
+```json
+POST /webhook/update-candidature
+Content-Type: application/json
+
+{
+  "candidature_id": "uuid",
+  "user_id": "uuid",
+  "statut": "Entretien",
+  "notes": "RDV le 3 avril"
+}
 ```
 
 ---
 
 ## WF-STRIPE — Gestion Abonnements
-- **ID:** `Sp9T1mGtUkjQy9Sn`
-- **Status:** ✅ ACTIVE
-- **Trigger:** Stripe Webhook — `POST /webhook/stripe-applyflow`
-- **Webhook URL:** `https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow`
-- **Authentication:** HMAC-SHA256 signature verification via `Code - Verifier signature Stripe` node (BUG-006 fix). Secret stored in n8n env var `STRIPE_WEBHOOK_SECRET`.
+- **Status:** Active
+- **Trigger:** Stripe Webhook POST `/webhook/stripe-applyflow`
+- **Webhook URL:** `https://[YOUR_N8N_INSTANCE]/webhook/stripe-applyflow`
+- **Authentication:** HMAC-SHA256 signature verification via `Code - Verifier signature Stripe`
+  node (BUG-006 fix). Secret stored in n8n env var `STRIPE_WEBHOOK_SECRET`.
 - **Purpose:**
-  1. Receives Stripe events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
-  2. On new subscription: creates/updates profil, invites user to Supabase Auth, sends welcome email
-  3. On subscription update: updates user plan in Supabase
-  4. On cancellation: deactivates user, sends cancellation email
-- **Events handled:**
-  - `checkout.session.completed` → new subscriber flow
-  - `customer.subscription.updated` → plan change
-  - `customer.subscription.deleted` → cancellation
+  1. `checkout.session.completed` → creates/updates profil, invites user to Supabase Auth, sends welcome email
+  2. `customer.subscription.updated` → updates user plan
+  3. `customer.subscription.deleted` → deactivates user, sends cancellation email
 
 ### How to test WF-STRIPE
 ```bash
-# Use Stripe CLI to forward events locally (for testing):
-stripe listen --forward-to https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow
+# Use Stripe CLI:
+stripe listen --forward-to https://[YOUR_N8N_INSTANCE]/webhook/stripe-applyflow
+stripe trigger checkout.session.completed
 
-# Or use Stripe dashboard > Webhooks > Send test event
-# Select event type: checkout.session.completed
+# Or via Stripe Dashboard > Developers > Webhooks > Send test event
 ```
-
----
-
-## Webhook URLs Summary
-
-> ⚠️ **Security note (BUG-009):** Webhook paths are secrets — regenerate any exposed webhook URL via n8n UI if this repo becomes public. Never commit raw webhook UUIDs to version control.
-
-| Workflow | Webhook URL |
-|----------|-------------|
-| WF-A Onboarding | `https://p2urkinden.app.n8n.cloud/webhook/[WF-A-WEBHOOK-PATH]` — regenerate if exposed |
-| WF-C Génération LM | `https://p2urkinden.app.n8n.cloud/webhook/generate-lm` |
-| WF-STRIPE Abonnements | `https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow` |
 
 ---
 
 ## Credentials Required in n8n
 
 | Credential Name | Type | Used By |
-|----------------|------|---------|
+|---|---|---|
 | Supabase account | Supabase API | WF-A, WF-B, WF-C, WF-D, WF-STRIPE |
-| Anthropic API | HTTP Header Auth | WF-B, WF-C |
-| Google Drive OAuth2 | Google OAuth2 | WF-C (template copy) |
-| Header Auth account | HTTP Header Auth | WF-STRIPE (Stripe webhook auth) |
+| Header Auth account (Anthropic) | HTTP Header Auth | WF-B, WF-C |
+| Google Drive account 2 | Google Drive OAuth2 | WF-C (template copy + batchUpdate) |
+| Resend API | HTTP Header Auth | WF-B, WF-C, WF-STRIPE |
+
+## Environment Variables Required in n8n
+
+| Variable | Purpose |
+|---|---|
+| `STRIPE_WEBHOOK_SECRET` | HMAC signature verification in WF-STRIPE |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Auth admin invite in WF-STRIPE |
+| `ADZUNA_APP_ID` | Adzuna job search API in WF-B |
+| `ADZUNA_APP_KEY` | Adzuna job search API in WF-B |
 
 ---
 
 ## Exported Workflow Files
 
-The workflow JSONs are exported and stored in `n8n/workflows/`:
-- `wf-b-alertes-offres.json`
-- `wf-c-generation-lm.json`
-- `wf-d-crm-candidatures.json`
-- `wf-stripe-abonnements.json`
+Workflow JSONs are stored in `n8n/workflows/` and kept in sync with the live n8n instance:
 
-These can be imported into any n8n instance via Settings > Import workflow.
+| File | Workflow |
+|---|---|
+| `wf-a-onboarding.json` | WF-A Onboarding |
+| `wf-b-alertes-offres.json` | WF-B Alertes Offres Emploi |
+| `wf-c-generation-lm.json` | WF-C Generation Lettre de Motivation |
+| `wf-d-crm-candidatures.json` | WF-D CRM Candidatures |
+| `wf-stripe-abonnements.json` | WF-STRIPE Gestion Abonnements |
+
+To import into a new n8n instance: **Settings > Import workflow** > select the JSON file.

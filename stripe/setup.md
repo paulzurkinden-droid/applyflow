@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Stripe account at https://dashboard.stripe.com
-- Access to n8n Cloud: https://p2urkinden.app.n8n.cloud
+- Access to n8n Cloud: https://[YOUR_N8N_INSTANCE]
 - n8n WF-STRIPE workflow is active (ID: Sp9T1mGtUkjQy9Sn)
 
 ---
@@ -65,7 +65,7 @@ Booster:  https://buy.stripe.com/[your-booster-link]
 Go to **Stripe Dashboard > Developers > Webhooks > Add endpoint**
 
 ### Webhook Configuration
-- **Endpoint URL:** `https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow`
+- **Endpoint URL:** `https://[YOUR_N8N_INSTANCE]/webhook/stripe-applyflow`
 - **Events to send:**
   - `checkout.session.completed`
   - `customer.subscription.updated`
@@ -102,7 +102,7 @@ The `Code - Verifier signature Stripe` node reads the secret from the n8n env va
 ### Test with Stripe CLI (recommended)
 ```bash
 stripe login
-stripe listen --forward-to https://p2urkinden.app.n8n.cloud/webhook/stripe-applyflow
+stripe listen --forward-to https://[YOUR_N8N_INSTANCE]/webhook/stripe-applyflow
 # In another terminal:
 stripe trigger checkout.session.completed
 ```
