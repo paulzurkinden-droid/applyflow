@@ -11,7 +11,7 @@
 
 Base URL : `https://p2urkinden.app.n8n.cloud/webhook/`
 
-### POST `/webhook/f1fea724-e392-473d-963a-49cf3207f5cf`
+### POST `/webhook/[WF-A-WEBHOOK-PATH]`
 **WF-A — Onboarding Tally**
 
 Appelé automatiquement par Tally à la soumission du formulaire.

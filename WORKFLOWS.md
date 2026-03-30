@@ -7,7 +7,7 @@
 ## WF-A — Onboarding ✅ COMPLÉTÉ
 
 **ID n8n** : `EddlSDFtz15DWldl`
-**Trigger** : Webhook POST Tally (`/webhook/f1fea724-e392-473d-963a-49cf3207f5cf`)
+**Trigger** : Webhook POST Tally (`/webhook/[WF-A-WEBHOOK-PATH]`)
 
 Structure complète documentée dans `ApplyFlow_Passation_Projet.md` section 6.
 

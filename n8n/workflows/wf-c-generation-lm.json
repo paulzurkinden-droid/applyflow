@@ -1,0 +1,1476 @@
+{
+    "updatedAt":  "2026-03-29T22:47:39.391Z",
+    "createdAt":  "2026-03-29T20:35:27.058Z",
+    "id":  "m6voz15eYd38v4Ax",
+    "name":  "WF-C - G?n?ration Lettres de Motivation",
+    "description":  null,
+    "active":  true,
+    "isArchived":  false,
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "generate-lm",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "04438b7f-9668-4040-8906-43c777bb2512",
+                      "type":  "n8n-nodes-base.webhook",
+                      "webhookId":  "generate-lm",
+                      "name":  "Webhook - POST /generate-lm",
+                      "position":  [
+                                       240,
+                                       300
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Valider le body de la requ?te\nconst body = $input.first().json.body || $input.first().json;\nconst { user_id, titre_poste, entreprise, url_offre, description_offre } = body;\n\nconst errors = [];\nif (!user_id) errors.push(\u0027user_id\u0027);\nif (!titre_poste || titre_poste.length \u003e 100) errors.push(\u0027titre_poste\u0027);\nif (!entreprise || entreprise.length \u003e 100) errors.push(\u0027entreprise\u0027);\nif (!description_offre) errors.push(\u0027description_offre\u0027);\n\nif (errors.length \u003e 0) {\n  return [{\n    json: {\n      valid: false,\n      error: \u0027VALIDATION_ERROR\u0027,\n      fields: errors\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    user_id,\n    titre_poste,\n    entreprise,\n    url_offre: url_offre || \u0027\u0027,\n    description_offre\n  }\n}];\n"
+                                     },
+                      "id":  "dd75a4d6-dd47-4789-b0c8-26dd80c184fb",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Valider requ?te",
+                      "position":  [
+                                       460,
+                                       300
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "valid-check",
+                                                                                   "leftValue":  "={{ $json.valid }}",
+                                                                                   "rightValue":  true,
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "equal"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        }
+                                     },
+                      "id":  "d5d3a96e-65db-420b-ac1a-703b5de25462",
+                      "type":  "n8n-nodes-base.if",
+                      "name":  "IF - Requ?te valide ?",
+                      "position":  [
+                                       680,
+                                       300
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ JSON.stringify({ error: \u0027VALIDATION_ERROR\u0027, fields: $(\u0027Code - Valider requ?te\u0027).item.json.fields }) }}",
+                                         "options":  {
+                                                         "responseCode":  422
+                                                     }
+                                     },
+                      "id":  "ff32ac03-d0d7-4a26-a68d-31c5e842fb5a",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "name":  "Respond - 422 Validation",
+                      "position":  [
+                                       900,
+                                       460
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "get",
+                                         "tableId":  "profils",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "id",
+                                                                                "condition":  "equal",
+                                                                                "keyValue":  "={{ $(\u0027Code - Valider requ?te\u0027).item.json.user_id }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "b80655ce-e5ca-44e8-9069-75c1e24a1c3c",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - R?cup?rer profil",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       900,
+                                       200
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "preferences_recherche",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "user_id",
+                                                                                "condition":  "equal",
+                                                                                "keyValue":  "={{ $(\u0027Code - Valider requ?te\u0027).item.json.user_id }}"
+                                                                            }
+                                                                        ]
+                                                     },
+                                         "limit":  1,
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "2591caa3-0de9-42d1-bd51-9c555683ab44",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - R?cup?rer pr?f?rences",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       1120,
+                                       200
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict"
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "plan-check",
+                                                                                   "leftValue":  "={{ $(\u0027Supabase - R\\u00e9cup\\u00e9rer profil\u0027).item.json.plan }}",
+                                                                                   "rightValue":  "starter",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "notEqual"
+                                                                                                }
+                                                                               },
+                                                                               {
+                                                                                   "id":  "actif-check",
+                                                                                   "leftValue":  "={{ $(\u0027Supabase - R\\u00e9cup\\u00e9rer profil\u0027).item.json.actif }}",
+                                                                                   "rightValue":  true,
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "true"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        }
+                                     },
+                      "id":  "4c62b60d-560a-42ae-af9c-aa3515003835",
+                      "type":  "n8n-nodes-base.if",
+                      "name":  "IF - Plan Pro ou Booster ?",
+                      "position":  [
+                                       1340,
+                                       200
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={ \"error\": \"PLAN_INSUFFICIENT\", \"message\": \"La g?n?ration de lettres de motivation n?cessite un plan Pro ou Booster actif.\", \"upgrade_url\": \"https://applyflow.ch/pricing\" }",
+                                         "options":  {
+                                                         "responseCode":  403
+                                                     }
+                                     },
+                      "id":  "a15fe635-070b-455c-adf7-30ac0d9cc07c",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "name":  "Respond - 403 Plan insuffisant",
+                      "position":  [
+                                       1560,
+                                       380
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Pr?parer le prompt de g?n?ration LM\nconst profil = $(\u0027Supabase - R?cup?rer profil\u0027).item.json;\nconst prefsRaw = $(\u0027Supabase - R?cup?rer pr?f?rences\u0027).all();\nconst pref = prefsRaw.length \u003e 0 ? prefsRaw[0].json : {};\nconst req = $(\u0027Code - Valider requ?te\u0027).item.json;\n\nconst today = new Date();\nconst dateJour = today.toLocaleDateString(\u0027fr-CH\u0027, { day: \u0027numeric\u0027, month: \u0027long\u0027, year: \u0027numeric\u0027 });\nconst villeCandidat = (pref.localisation || \u0027\u0027).split(\u0027,\u0027)[0].trim() || \u0027Lausanne\u0027;\n\nconst cvTexte = profil.cv_texte ? `\\nCV / Exp?riences : ${profil.cv_texte.substring(0, 800)}` : \u0027\u0027;\nconst description_libre = profil.description_libre ? `\\nProfil libre : ${profil.description_libre.substring(0, 400)}` : \u0027\u0027;\n\nconst prompt = `Tu es un expert en r?daction de candidatures pour le march? suisse romand.\nG?n?re une lettre de motivation professionnelle et personnalis?e.\n\nPROFIL DU CANDIDAT :\n- Nom : ${profil.nom || \u0027Non renseign?\u0027}\n- Email : ${profil.email}\n- Poste cible : ${pref.poste_cible || \u0027Non renseign?\u0027}\n- Localisation : ${pref.localisation || \u0027Non renseign?e\u0027}${cvTexte}${description_libre}\n\nOFFRE CIBL?E :\n- Entreprise : ${req.entreprise}\n- Poste : ${req.titre_poste}\n- Description : ${req.description_offre.substring(0, 1000)}\n\nG?n?re un JSON avec ces champs exactement :\n{\n  \"destinataire_nom\": \"Madame, Monsieur\",\n  \"destinataire_adresse\": \"\",\n  \"destinataire_ville\": \"${villeCandidat}\",\n  \"objet_label\": \"Objet :\",\n  \"objet\": \"Candidature au poste de ${req.titre_poste}\",\n  \"lieu_date\": \"${villeCandidat}, le ${dateJour}\",\n  \"salutation\": \"Madame, Monsieur,\",\n  \"para_accroche\": \"paragraphe 1 (accroche forte, 3-4 phrases)\",\n  \"para_arg1\": \"paragraphe 2 (exp?rience pertinente)\",\n  \"para_arg2\": \"paragraphe 3 (valeur ajout?e pour l\u0027entreprise)\",\n  \"para_competences\": \"paragraphe 4 (comp?tences techniques/soft skills)\",\n  \"para_conclusion\": \"paragraphe 5 (disponibilit?, appel ? l\u0027action)\",\n  \"formule_politesse\": \"formule de politesse compl?te\"\n}\n\nR?gles :\n- Ton professionnel mais chaleureux, adapt? ? la culture suisse\n- Ne jamais inventer de dates, dipl?mes ou exp?riences non mentionn?s\n- Longueur : 350-450 mots total\n- Langue : fran?ais romand (pas d\u0027anglicismes inutiles)\n- R?ponds UNIQUEMENT avec le JSON, sans markdown ni backticks`;\n\nreturn [{\n  json: {\n    profil,\n    pref,\n    req,\n    prompt,\n    requestBody: {\n      model: \u0027claude-sonnet-4-6\u0027,\n      max_tokens: 2048,\n      messages: [{ role: \u0027user\u0027, content: prompt }]\n    }\n  }\n}];\n"
+                                     },
+                      "id":  "460503a6-5bfe-40fb-858a-5722054f57a3",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Pr?parer prompt LM",
+                      "position":  [
+                                       1560,
+                                       100
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.anthropic.com/v1/messages",
+                                         "authentication":  "genericCredentialType",
+                                         "genericAuthType":  "httpHeaderAuth",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "x-api-key",
+                                                                                         "value":  "={{$credentials.value}}"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "anthropic-version",
+                                                                                         "value":  "2023-06-01"
+                                                                                     },
+                                                                                     {
+                                                                                         "name":  "content-type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify($json.requestBody) }}",
+                                         "options":  {
+                                                         "timeout":  45000
+                                                     }
+                                     },
+                      "id":  "679b2279-2f45-478a-b765-e3c72f485767",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "l9fVHncLdNjJk6Gg",
+                                                                 "name":  "Header Auth account"
+                                                             }
+                                      },
+                      "name":  "HTTP - Claude G?n?rer LM",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       1780,
+                                       100
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Parser la r?ponse LM de Claude\nconst claudeResp = $(\u0027HTTP - Claude G?n?rer LM\u0027).item.json;\nconst ctx = $(\u0027Code - Pr?parer prompt LM\u0027).item.json;\n\nlet raw = \u0027\u0027;\ntry {\n  raw = claudeResp.content[0].text || \u0027\u0027;\n} catch(e) { raw = \u0027\u0027; }\n\n// Nettoyer les backticks markdown\nraw = raw.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027).trim();\n\nlet lm = {};\ntry {\n  lm = JSON.parse(raw);\n} catch(e) {\n  lm = {\n    destinataire_nom: \u0027Madame, Monsieur\u0027,\n    destinataire_adresse: \u0027\u0027,\n    destinataire_ville: \u0027\u0027,\n    objet_label: \u0027Objet :\u0027,\n    objet: `Candidature au poste de ${ctx.req.titre_poste}`,\n    lieu_date: `Lausanne, le ${new Date().toLocaleDateString(\u0027fr-CH\u0027)}`,\n    salutation: \u0027Madame, Monsieur,\u0027,\n    para_accroche: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_arg1: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_arg2: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_competences: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_conclusion: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    formule_politesse: \u0027Veuillez agr?er, Madame, Monsieur, mes salutations distingu?es.\u0027\n  };\n}\n\nreturn [{\n  json: {\n    lm,\n    profil: ctx.profil,\n    pref: ctx.pref,\n    req: ctx.req\n  }\n}];\n"
+                                     },
+                      "id":  "8ef0d162-a4b0-4841-97a2-8e9bdfbe02df",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Parser LM Claude",
+                      "position":  [
+                                       2000,
+                                       100
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://www.googleapis.com/drive/v3/files/1E-edWxTWOVQ3LtR9qSJcViC_zzBKCzZX/copy",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ name: \u0027LM - \u0027 + $json.req.entreprise + \u0027 - \u0027 + $json.req.titre_poste, parents: [\u00271ewqPkXjGm4aZ8eU6kvCAdNDsU0mRr45V\u0027] }) }}",
+                                         "options":  {
+                                                         "timeout":  15000
+                                                     }
+                                     },
+                      "id":  "52932691-07bd-4b15-afe9-da0aa28732f7",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "Hj4G4cE5XF9QOynW",
+                                                                       "name":  "Google Drive account 2"
+                                                                   }
+                                      },
+                      "name":  "HTTP - Copier template LM",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       2220,
+                                       100
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Pr?parer les requests batchUpdate pour remplir les placeholders\nconst lmData = $(\u0027Code - Parser LM Claude\u0027).item.json;\nconst copyResp = $(\u0027HTTP - Copier template LM\u0027).item.json;\nconst newDocId = copyResp.id;\n\nif (!newDocId) {\n  throw new Error(\u0027Impossible de r?cup?rer l\\\u0027ID du nouveau document Google Docs\u0027);\n}\n\nconst lm = lmData.lm;\n\n// Mapping placeholders ? valeurs\nconst replacements = [\n  { placeholder: \u0027{{DESTINATAIRE_NOM}}\u0027, value: lm.destinataire_nom || \u0027Madame, Monsieur\u0027 },\n  { placeholder: \u0027{{DESTINATAIRE_ADRESSE}}\u0027, value: lm.destinataire_adresse || \u0027\u0027 },\n  { placeholder: \u0027{{DESTINATAIRE_VILLE}}\u0027, value: lm.destinataire_ville || \u0027\u0027 },\n  { placeholder: \u0027{{OBJET_LABEL}}\u0027, value: lm.objet_label || \u0027Objet :\u0027 },\n  { placeholder: \u0027{{OBJET}}\u0027, value: lm.objet || \u0027\u0027 },\n  { placeholder: \u0027{{LIEU_DATE}}\u0027, value: lm.lieu_date || \u0027\u0027 },\n  { placeholder: \u0027{{SALUTATION}}\u0027, value: lm.salutation || \u0027Madame, Monsieur,\u0027 },\n  { placeholder: \u0027{{PARA_ACCROCHE}}\u0027, value: lm.para_accroche || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_ARG1}}\u0027, value: lm.para_arg1 || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_ARG2}}\u0027, value: lm.para_arg2 || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_COMPETENCES}}\u0027, value: lm.para_competences || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_CONCLUSION}}\u0027, value: lm.para_conclusion || \u0027\u0027 },\n  { placeholder: \u0027{{FORMULE_POLITESSE}}\u0027, value: lm.formule_politesse || \u0027\u0027 }\n];\n\nconst requests = replacements.map(r =\u003e ({\n  replaceAllText: {\n    containsText: { text: r.placeholder, matchCase: true },\n    replaceText: r.value\n  }\n}));\n\nreturn [{\n  json: {\n    newDocId,\n    docUrl: `https://docs.google.com/document/d/${newDocId}/edit`,\n    requests,\n    profil: lmData.profil,\n    req: lmData.req\n  }\n}];\n"
+                                     },
+                      "id":  "4195d83a-0872-4038-9f5e-953b3fcbe400",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Pr?parer replacements",
+                      "position":  [
+                                       2440,
+                                       100
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://docs.googleapis.com/v1/documents/{{ $json.newDocId }}:batchUpdate",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ requests: $json.requests }) }}",
+                                         "options":  {
+                                                         "timeout":  15000
+                                                     }
+                                     },
+                      "id":  "68d2cafc-efa2-434d-8f76-efc48bcec354",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "Hj4G4cE5XF9QOynW",
+                                                                       "name":  "Google Drive account 2"
+                                                                   }
+                                      },
+                      "name":  "HTTP - batchUpdate Google Docs",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       2660,
+                                       100
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://www.googleapis.com/drive/v3/files/{{ $(\u0027Code - Pr?parer replacements\u0027).item.json.newDocId }}/permissions",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ role: \u0027writer\u0027, type: \u0027user\u0027, emailAddress: $(\u0027Code - Pr?parer replacements\u0027).item.json.profil.email }) }}",
+                                         "options":  {
+                                                         "timeout":  10000
+                                                     }
+                                     },
+                      "id":  "2099b416-a79d-4c18-a732-4084ec26d54b",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "Hj4G4cE5XF9QOynW",
+                                                                       "name":  "Google Drive account 2"
+                                                                   }
+                                      },
+                      "name":  "HTTP - Partager LM",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       2880,
+                                       100
+                                   ],
+                      "typeVersion":  4.2
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "create",
+                                         "tableId":  "candidatures",
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "user_id",
+                                                                                  "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.profil.id }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "titre_poste",
+                                                                                  "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.req.titre_poste }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "entreprise",
+                                                                                  "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.req.entreprise }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "url_offre",
+                                                                                  "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.req.url_offre }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "statut",
+                                                                                  "fieldValue":  "A envoyer"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "date_candidature",
+                                                                                  "fieldValue":  "={{ new Date().toISOString().split(\u0027T\u0027)[0] }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "lettre_generee",
+                                                                                  "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.docUrl }}"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "id":  "2da0c122-bf55-4be0-a04c-fe69265ea559",
+                      "type":  "n8n-nodes-base.supabase",
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "8KEISLMo2kUMmv86",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      },
+                      "onError":  "continueRegularOutput",
+                      "name":  "Supabase - Logger candidature",
+                      "alwaysOutputData":  true,
+                      "position":  [
+                                       3100,
+                                       100
+                                   ],
+                      "typeVersion":  1
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// Pr?parer l\u0027email de livraison LM\nconst profil = $(\u0027Code - Pr?parer replacements\u0027).item.json.profil;\nconst req = $(\u0027Code - Pr?parer replacements\u0027).item.json.req;\nconst docUrl = $(\u0027Code - Pr?parer replacements\u0027).item.json.docUrl;\nconst candidatureId = $(\u0027Supabase - Logger candidature\u0027).item.json.id;\n\nconst html = `\n\u003cdiv style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"\u003e\n  \u003ch2 style=\"color: #2563eb;\"\u003e?? Votre lettre de motivation est pr?te !\u003c/h2\u003e\n  \u003cp\u003eBonjour ${profil.nom || \u0027\u0027},\u003c/p\u003e\n  \u003cp\u003eVotre lettre de motivation pour le poste de \u003cstrong\u003e${req.titre_poste}\u003c/strong\u003e chez \u003cstrong\u003e${req.entreprise}\u003c/strong\u003e a ?t? g?n?r?e.\u003c/p\u003e\n  \u003cdiv style=\"text-align: center; margin: 24px 0;\"\u003e\n    \u003ca href=\"${docUrl}\" style=\"display:inline-block; padding:12px 24px; background:#2563eb; color:white; border-radius:8px; text-decoration:none; font-size:16px;\"\u003e\n      Voir ma lettre de motivation ?\n    \u003c/a\u003e\n  \u003c/div\u003e\n  \u003cdiv style=\"background:#fef3c7; padding:12px; border-radius:8px; margin-top:16px;\"\u003e\n    \u003cp style=\"margin:0;\"\u003e?? \u003cstrong\u003eConseil :\u003c/strong\u003e Personnalisez les sections avant d\u0027envoyer votre candidature. V?rifiez notamment :\u003c/p\u003e\n    \u003cul style=\"margin:8px 0 0; padding-left:20px;\"\u003e\n      \u003cli\u003eLes coordonn?es du destinataire\u003c/li\u003e\n      \u003cli\u003eLes exemples concrets de vos r?alisations\u003c/li\u003e\n      \u003cli\u003eL\u0027orthographe de votre nom et adresse\u003c/li\u003e\n    \u003c/ul\u003e\n  \u003c/div\u003e\n  \u003cp style=\"color:#6b7280; font-size:12px; margin-top:24px;\"\u003eVous pouvez suivre vos candidatures en r?pondant ? cet email.\u003c/p\u003e\n\u003c/div\u003e\n`;\n\nreturn [{\n  json: {\n    email: profil.email,\n    subject: `?? Votre lettre de motivation - ${req.titre_poste} chez ${req.entreprise}`,\n    html,\n    candidature_id: candidatureId,\n    lm_url: docUrl\n  }\n}];\n"
+                                     },
+                      "id":  "d9582fcb-4200-4c29-94f1-ff9199041532",
+                      "type":  "n8n-nodes-base.code",
+                      "name":  "Code - Pr?parer email LM",
+                      "position":  [
+                                       3320,
+                                       100
+                                   ],
+                      "typeVersion":  2
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.resend.com/emails",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003cnoreply@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
+                                         "options":  {
+                                                         "timeout":  10000
+                                                     },
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpHeaderAuth"
+                                     },
+                      "id":  "b4aa24a0-e6d7-4d89-847a-7492e139270f",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "name":  "HTTP - Envoyer LM Resend",
+                      "onError":  "continueRegularOutput",
+                      "position":  [
+                                       3540,
+                                       100
+                                   ],
+                      "typeVersion":  4.2,
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "tc2f1NdNXAUtStcp",
+                                                                 "name":  "Resend API"
+                                                             }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ JSON.stringify({ success: true, candidature_id: $(\u0027Code - Pr?parer email LM\u0027).item.json.candidature_id, lm_url: $(\u0027Code - Pr?parer email LM\u0027).item.json.lm_url, email_sent: true }) }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "id":  "9c6a8c79-ca03-4c01-8059-846156b9e279",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "name":  "Respond - 200 Succ?s",
+                      "position":  [
+                                       3760,
+                                       100
+                                   ],
+                      "typeVersion":  1
+                  }
+              ],
+    "connections":  {
+                        "Webhook - POST /generate-lm":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Code - Valider requ?te",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                        "Code - Valider requ?te":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "IF - Requ?te valide ?",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "IF - Requ?te valide ?":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Supabase - R?cup?rer profil",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ],
+                                                                   [
+                                                                       {
+                                                                           "node":  "Respond - 422 Validation",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Supabase - R?cup?rer profil":  {
+                                                            "main":  [
+                                                                         [
+                                                                             {
+                                                                                 "node":  "Supabase - R?cup?rer pr?f?rences",
+                                                                                 "type":  "main",
+                                                                                 "index":  0
+                                                                             }
+                                                                         ]
+                                                                     ]
+                                                        },
+                        "Supabase - R?cup?rer pr?f?rences":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "IF - Plan Pro ou Booster ?",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                        "IF - Plan Pro ou Booster ?":  {
+                                                           "main":  [
+                                                                        [
+                                                                            {
+                                                                                "node":  "Code - Pr?parer prompt LM",
+                                                                                "type":  "main",
+                                                                                "index":  0
+                                                                            }
+                                                                        ],
+                                                                        [
+                                                                            {
+                                                                                "node":  "Respond - 403 Plan insuffisant",
+                                                                                "type":  "main",
+                                                                                "index":  0
+                                                                            }
+                                                                        ]
+                                                                    ]
+                                                       },
+                        "Code - Pr?parer prompt LM":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "HTTP - Claude G?n?rer LM",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ]
+                                                      },
+                        "HTTP - Claude G?n?rer LM":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Code - Parser LM Claude",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "Code - Parser LM Claude":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "HTTP - Copier template LM",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "HTTP - Copier template LM":  {
+                                                          "main":  [
+                                                                       [
+                                                                           {
+                                                                               "node":  "Code - Pr?parer replacements",
+                                                                               "type":  "main",
+                                                                               "index":  0
+                                                                           }
+                                                                       ]
+                                                                   ]
+                                                      },
+                        "Code - Pr?parer replacements":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "HTTP - batchUpdate Google Docs",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                        "HTTP - batchUpdate Google Docs":  {
+                                                               "main":  [
+                                                                            [
+                                                                                {
+                                                                                    "node":  "HTTP - Partager LM",
+                                                                                    "type":  "main",
+                                                                                    "index":  0
+                                                                                }
+                                                                            ]
+                                                                        ]
+                                                           },
+                        "HTTP - Partager LM":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Supabase - Logger candidature",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "Supabase - Logger candidature":  {
+                                                              "main":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "Code - Pr?parer email LM",
+                                                                                   "type":  "main",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                          },
+                        "Code - Pr?parer email LM":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "HTTP - Envoyer LM Resend",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "HTTP - Envoyer LM Resend":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Respond - 200 Succ?s",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     }
+                    },
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "saveManualExecutions":  true,
+                     "callerPolicy":  "workflowsFromSameOwner",
+                     "errorWorkflow":  "",
+                     "availableInMCP":  false
+                 },
+    "staticData":  null,
+    "meta":  null,
+    "pinData":  null,
+    "versionId":  "dbdb8a65-4355-4206-8b38-4d8a4a7c00d5",
+    "activeVersionId":  "dbdb8a65-4355-4206-8b38-4d8a4a7c00d5",
+    "versionCounter":  11,
+    "triggerCount":  1,
+    "shared":  [
+                   {
+                       "updatedAt":  "2026-03-29T20:35:27.059Z",
+                       "createdAt":  "2026-03-29T20:35:27.059Z",
+                       "role":  "workflow:owner",
+                       "workflowId":  "m6voz15eYd38v4Ax",
+                       "projectId":  "kCh6XDPhK4rzq87S",
+                       "project":  {
+                                       "updatedAt":  "2025-09-19T17:04:52.450Z",
+                                       "createdAt":  "2025-09-19T17:04:49.024Z",
+                                       "id":  "kCh6XDPhK4rzq87S",
+                                       "name":  "Paul Zurkinden \u003cpaul.zurkinden@yahoo.com\u003e",
+                                       "type":  "personal",
+                                       "icon":  null,
+                                       "description":  null,
+                                       "projectRelations":  [
+                                                                {
+                                                                    "updatedAt":  "2025-09-19T17:04:49.025Z",
+                                                                    "createdAt":  "2025-09-19T17:04:49.025Z",
+                                                                    "userId":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
+                                                                    "projectId":  "kCh6XDPhK4rzq87S",
+                                                                    "user":  {
+                                                                                 "updatedAt":  "2026-03-29T22:03:01.000Z",
+                                                                                 "createdAt":  "2025-09-19T17:04:47.495Z",
+                                                                                 "id":  "9dca4967-b0cd-4763-8ec6-0b51f132a58f",
+                                                                                 "email":  "paul.zurkinden@yahoo.com",
+                                                                                 "firstName":  "Paul",
+                                                                                 "lastName":  "Zurkinden",
+                                                                                 "personalizationAnswers":  null,
+                                                                                 "settings":  {
+                                                                                                  "userActivated":  true,
+                                                                                                  "firstSuccessfulWorkflowId":  "Ihoi3ApwrTIlnarI",
+                                                                                                  "userActivatedAt":  1759094160476,
+                                                                                                  "npsSurvey":  {
+                                                                                                                    "responded":  true,
+                                                                                                                    "lastShownAt":  1771262327971
+                                                                                                                },
+                                                                                                  "dismissedCallouts":  {
+                                                                                                                            "preBuiltAgentsModalCallout":  true
+                                                                                                                        },
+                                                                                                  "easyAIWorkflowOnboarded":  true,
+                                                                                                  "userClaimedAiCredits":  true
+                                                                                              },
+                                                                                 "disabled":  false,
+                                                                                 "mfaEnabled":  false,
+                                                                                 "lastActiveAt":  "2026-03-29",
+                                                                                 "isPending":  false
+                                                                             }
+                                                                }
+                                                            ]
+                                   }
+                   }
+               ],
+    "tags":  [
+
+             ],
+    "activeVersion":  {
+                          "updatedAt":  "2026-03-29T22:47:39.392Z",
+                          "createdAt":  "2026-03-29T22:47:39.392Z",
+                          "versionId":  "dbdb8a65-4355-4206-8b38-4d8a4a7c00d5",
+                          "workflowId":  "m6voz15eYd38v4Ax",
+                          "nodes":  [
+                                        {
+                                            "parameters":  {
+                                                               "httpMethod":  "POST",
+                                                               "path":  "generate-lm",
+                                                               "responseMode":  "responseNode",
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "04438b7f-9668-4040-8906-43c777bb2512",
+                                            "type":  "n8n-nodes-base.webhook",
+                                            "webhookId":  "generate-lm",
+                                            "name":  "Webhook - POST /generate-lm",
+                                            "position":  [
+                                                             240,
+                                                             300
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Valider le body de la requ?te\nconst body = $input.first().json.body || $input.first().json;\nconst { user_id, titre_poste, entreprise, url_offre, description_offre } = body;\n\nconst errors = [];\nif (!user_id) errors.push(\u0027user_id\u0027);\nif (!titre_poste || titre_poste.length \u003e 100) errors.push(\u0027titre_poste\u0027);\nif (!entreprise || entreprise.length \u003e 100) errors.push(\u0027entreprise\u0027);\nif (!description_offre) errors.push(\u0027description_offre\u0027);\n\nif (errors.length \u003e 0) {\n  return [{\n    json: {\n      valid: false,\n      error: \u0027VALIDATION_ERROR\u0027,\n      fields: errors\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    user_id,\n    titre_poste,\n    entreprise,\n    url_offre: url_offre || \u0027\u0027,\n    description_offre\n  }\n}];\n"
+                                                           },
+                                            "id":  "dd75a4d6-dd47-4789-b0c8-26dd80c184fb",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Valider requ?te",
+                                            "position":  [
+                                                             460,
+                                                             300
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "conditions":  {
+                                                                                  "options":  {
+                                                                                                  "caseSensitive":  true,
+                                                                                                  "leftValue":  "",
+                                                                                                  "typeValidation":  "strict"
+                                                                                              },
+                                                                                  "conditions":  [
+                                                                                                     {
+                                                                                                         "id":  "valid-check",
+                                                                                                         "leftValue":  "={{ $json.valid }}",
+                                                                                                         "rightValue":  true,
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "boolean",
+                                                                                                                          "operation":  "equal"
+                                                                                                                      }
+                                                                                                     }
+                                                                                                 ],
+                                                                                  "combinator":  "and"
+                                                                              }
+                                                           },
+                                            "id":  "d5d3a96e-65db-420b-ac1a-703b5de25462",
+                                            "type":  "n8n-nodes-base.if",
+                                            "name":  "IF - Requ?te valide ?",
+                                            "position":  [
+                                                             680,
+                                                             300
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "respondWith":  "json",
+                                                               "responseBody":  "={{ JSON.stringify({ error: \u0027VALIDATION_ERROR\u0027, fields: $(\u0027Code - Valider requ?te\u0027).item.json.fields }) }}",
+                                                               "options":  {
+                                                                               "responseCode":  422
+                                                                           }
+                                                           },
+                                            "id":  "ff32ac03-d0d7-4a26-a68d-31c5e842fb5a",
+                                            "type":  "n8n-nodes-base.respondToWebhook",
+                                            "name":  "Respond - 422 Validation",
+                                            "position":  [
+                                                             900,
+                                                             460
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "get",
+                                                               "tableId":  "profils",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $(\u0027Code - Valider requ?te\u0027).item.json.user_id }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "b80655ce-e5ca-44e8-9069-75c1e24a1c3c",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - R?cup?rer profil",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             900,
+                                                             200
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "getAll",
+                                                               "tableId":  "preferences_recherche",
+                                                               "filters":  {
+                                                                               "conditions":  [
+                                                                                                  {
+                                                                                                      "keyName":  "user_id",
+                                                                                                      "condition":  "equal",
+                                                                                                      "keyValue":  "={{ $(\u0027Code - Valider requ?te\u0027).item.json.user_id }}"
+                                                                                                  }
+                                                                                              ]
+                                                                           },
+                                                               "limit":  1,
+                                                               "options":  {
+
+                                                                           }
+                                                           },
+                                            "id":  "2591caa3-0de9-42d1-bd51-9c555683ab44",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - R?cup?rer pr?f?rences",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             1120,
+                                                             200
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "conditions":  {
+                                                                                  "options":  {
+                                                                                                  "caseSensitive":  true,
+                                                                                                  "leftValue":  "",
+                                                                                                  "typeValidation":  "strict"
+                                                                                              },
+                                                                                  "conditions":  [
+                                                                                                     {
+                                                                                                         "id":  "plan-check",
+                                                                                                         "leftValue":  "={{ $(\u0027Supabase - R\\u00e9cup\\u00e9rer profil\u0027).item.json.plan }}",
+                                                                                                         "rightValue":  "starter",
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "string",
+                                                                                                                          "operation":  "notEqual"
+                                                                                                                      }
+                                                                                                     },
+                                                                                                     {
+                                                                                                         "id":  "actif-check",
+                                                                                                         "leftValue":  "={{ $(\u0027Supabase - R\\u00e9cup\\u00e9rer profil\u0027).item.json.actif }}",
+                                                                                                         "rightValue":  true,
+                                                                                                         "operator":  {
+                                                                                                                          "type":  "boolean",
+                                                                                                                          "operation":  "true"
+                                                                                                                      }
+                                                                                                     }
+                                                                                                 ],
+                                                                                  "combinator":  "and"
+                                                                              }
+                                                           },
+                                            "id":  "4c62b60d-560a-42ae-af9c-aa3515003835",
+                                            "type":  "n8n-nodes-base.if",
+                                            "name":  "IF - Plan Pro ou Booster ?",
+                                            "position":  [
+                                                             1340,
+                                                             200
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "respondWith":  "json",
+                                                               "responseBody":  "={ \"error\": \"PLAN_INSUFFICIENT\", \"message\": \"La g?n?ration de lettres de motivation n?cessite un plan Pro ou Booster actif.\", \"upgrade_url\": \"https://applyflow.ch/pricing\" }",
+                                                               "options":  {
+                                                                               "responseCode":  403
+                                                                           }
+                                                           },
+                                            "id":  "a15fe635-070b-455c-adf7-30ac0d9cc07c",
+                                            "type":  "n8n-nodes-base.respondToWebhook",
+                                            "name":  "Respond - 403 Plan insuffisant",
+                                            "position":  [
+                                                             1560,
+                                                             380
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr?parer le prompt de g?n?ration LM\nconst profil = $(\u0027Supabase - R?cup?rer profil\u0027).item.json;\nconst prefsRaw = $(\u0027Supabase - R?cup?rer pr?f?rences\u0027).all();\nconst pref = prefsRaw.length \u003e 0 ? prefsRaw[0].json : {};\nconst req = $(\u0027Code - Valider requ?te\u0027).item.json;\n\nconst today = new Date();\nconst dateJour = today.toLocaleDateString(\u0027fr-CH\u0027, { day: \u0027numeric\u0027, month: \u0027long\u0027, year: \u0027numeric\u0027 });\nconst villeCandidat = (pref.localisation || \u0027\u0027).split(\u0027,\u0027)[0].trim() || \u0027Lausanne\u0027;\n\nconst cvTexte = profil.cv_texte ? `\\nCV / Exp?riences : ${profil.cv_texte.substring(0, 800)}` : \u0027\u0027;\nconst description_libre = profil.description_libre ? `\\nProfil libre : ${profil.description_libre.substring(0, 400)}` : \u0027\u0027;\n\nconst prompt = `Tu es un expert en r?daction de candidatures pour le march? suisse romand.\nG?n?re une lettre de motivation professionnelle et personnalis?e.\n\nPROFIL DU CANDIDAT :\n- Nom : ${profil.nom || \u0027Non renseign?\u0027}\n- Email : ${profil.email}\n- Poste cible : ${pref.poste_cible || \u0027Non renseign?\u0027}\n- Localisation : ${pref.localisation || \u0027Non renseign?e\u0027}${cvTexte}${description_libre}\n\nOFFRE CIBL?E :\n- Entreprise : ${req.entreprise}\n- Poste : ${req.titre_poste}\n- Description : ${req.description_offre.substring(0, 1000)}\n\nG?n?re un JSON avec ces champs exactement :\n{\n  \"destinataire_nom\": \"Madame, Monsieur\",\n  \"destinataire_adresse\": \"\",\n  \"destinataire_ville\": \"${villeCandidat}\",\n  \"objet_label\": \"Objet :\",\n  \"objet\": \"Candidature au poste de ${req.titre_poste}\",\n  \"lieu_date\": \"${villeCandidat}, le ${dateJour}\",\n  \"salutation\": \"Madame, Monsieur,\",\n  \"para_accroche\": \"paragraphe 1 (accroche forte, 3-4 phrases)\",\n  \"para_arg1\": \"paragraphe 2 (exp?rience pertinente)\",\n  \"para_arg2\": \"paragraphe 3 (valeur ajout?e pour l\u0027entreprise)\",\n  \"para_competences\": \"paragraphe 4 (comp?tences techniques/soft skills)\",\n  \"para_conclusion\": \"paragraphe 5 (disponibilit?, appel ? l\u0027action)\",\n  \"formule_politesse\": \"formule de politesse compl?te\"\n}\n\nR?gles :\n- Ton professionnel mais chaleureux, adapt? ? la culture suisse\n- Ne jamais inventer de dates, dipl?mes ou exp?riences non mentionn?s\n- Longueur : 350-450 mots total\n- Langue : fran?ais romand (pas d\u0027anglicismes inutiles)\n- R?ponds UNIQUEMENT avec le JSON, sans markdown ni backticks`;\n\nreturn [{\n  json: {\n    profil,\n    pref,\n    req,\n    prompt,\n    requestBody: {\n      model: \u0027claude-sonnet-4-6\u0027,\n      max_tokens: 2048,\n      messages: [{ role: \u0027user\u0027, content: prompt }]\n    }\n  }\n}];\n"
+                                                           },
+                                            "id":  "460503a6-5bfe-40fb-858a-5722054f57a3",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr?parer prompt LM",
+                                            "position":  [
+                                                             1560,
+                                                             100
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.anthropic.com/v1/messages",
+                                                               "authentication":  "genericCredentialType",
+                                                               "genericAuthType":  "httpHeaderAuth",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "x-api-key",
+                                                                                                               "value":  "={{$credentials.value}}"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "anthropic-version",
+                                                                                                               "value":  "2023-06-01"
+                                                                                                           },
+                                                                                                           {
+                                                                                                               "name":  "content-type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify($json.requestBody) }}",
+                                                               "options":  {
+                                                                               "timeout":  45000
+                                                                           }
+                                                           },
+                                            "id":  "679b2279-2f45-478a-b765-e3c72f485767",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "credentials":  {
+                                                                "httpHeaderAuth":  {
+                                                                                       "id":  "l9fVHncLdNjJk6Gg",
+                                                                                       "name":  "Header Auth account"
+                                                                                   }
+                                                            },
+                                            "name":  "HTTP - Claude G?n?rer LM",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             1780,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Parser la r?ponse LM de Claude\nconst claudeResp = $(\u0027HTTP - Claude G?n?rer LM\u0027).item.json;\nconst ctx = $(\u0027Code - Pr?parer prompt LM\u0027).item.json;\n\nlet raw = \u0027\u0027;\ntry {\n  raw = claudeResp.content[0].text || \u0027\u0027;\n} catch(e) { raw = \u0027\u0027; }\n\n// Nettoyer les backticks markdown\nraw = raw.replace(/```json\\n?/g, \u0027\u0027).replace(/```\\n?/g, \u0027\u0027).trim();\n\nlet lm = {};\ntry {\n  lm = JSON.parse(raw);\n} catch(e) {\n  lm = {\n    destinataire_nom: \u0027Madame, Monsieur\u0027,\n    destinataire_adresse: \u0027\u0027,\n    destinataire_ville: \u0027\u0027,\n    objet_label: \u0027Objet :\u0027,\n    objet: `Candidature au poste de ${ctx.req.titre_poste}`,\n    lieu_date: `Lausanne, le ${new Date().toLocaleDateString(\u0027fr-CH\u0027)}`,\n    salutation: \u0027Madame, Monsieur,\u0027,\n    para_accroche: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_arg1: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_arg2: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_competences: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    para_conclusion: \u0027[Erreur g?n?ration - ? compl?ter]\u0027,\n    formule_politesse: \u0027Veuillez agr?er, Madame, Monsieur, mes salutations distingu?es.\u0027\n  };\n}\n\nreturn [{\n  json: {\n    lm,\n    profil: ctx.profil,\n    pref: ctx.pref,\n    req: ctx.req\n  }\n}];\n"
+                                                           },
+                                            "id":  "8ef0d162-a4b0-4841-97a2-8e9bdfbe02df",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Parser LM Claude",
+                                            "position":  [
+                                                             2000,
+                                                             100
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://www.googleapis.com/drive/v3/files/1E-edWxTWOVQ3LtR9qSJcViC_zzBKCzZX/copy",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "googleDriveOAuth2Api",
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ name: \u0027LM - \u0027 + $json.req.entreprise + \u0027 - \u0027 + $json.req.titre_poste, parents: [\u00271ewqPkXjGm4aZ8eU6kvCAdNDsU0mRr45V\u0027] }) }}",
+                                                               "options":  {
+                                                                               "timeout":  15000
+                                                                           }
+                                                           },
+                                            "id":  "52932691-07bd-4b15-afe9-da0aa28732f7",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "credentials":  {
+                                                                "googleDriveOAuth2Api":  {
+                                                                                             "id":  "Hj4G4cE5XF9QOynW",
+                                                                                             "name":  "Google Drive account 2"
+                                                                                         }
+                                                            },
+                                            "name":  "HTTP - Copier template LM",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             2220,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr?parer les requests batchUpdate pour remplir les placeholders\nconst lmData = $(\u0027Code - Parser LM Claude\u0027).item.json;\nconst copyResp = $(\u0027HTTP - Copier template LM\u0027).item.json;\nconst newDocId = copyResp.id;\n\nif (!newDocId) {\n  throw new Error(\u0027Impossible de r?cup?rer l\\\u0027ID du nouveau document Google Docs\u0027);\n}\n\nconst lm = lmData.lm;\n\n// Mapping placeholders ? valeurs\nconst replacements = [\n  { placeholder: \u0027{{DESTINATAIRE_NOM}}\u0027, value: lm.destinataire_nom || \u0027Madame, Monsieur\u0027 },\n  { placeholder: \u0027{{DESTINATAIRE_ADRESSE}}\u0027, value: lm.destinataire_adresse || \u0027\u0027 },\n  { placeholder: \u0027{{DESTINATAIRE_VILLE}}\u0027, value: lm.destinataire_ville || \u0027\u0027 },\n  { placeholder: \u0027{{OBJET_LABEL}}\u0027, value: lm.objet_label || \u0027Objet :\u0027 },\n  { placeholder: \u0027{{OBJET}}\u0027, value: lm.objet || \u0027\u0027 },\n  { placeholder: \u0027{{LIEU_DATE}}\u0027, value: lm.lieu_date || \u0027\u0027 },\n  { placeholder: \u0027{{SALUTATION}}\u0027, value: lm.salutation || \u0027Madame, Monsieur,\u0027 },\n  { placeholder: \u0027{{PARA_ACCROCHE}}\u0027, value: lm.para_accroche || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_ARG1}}\u0027, value: lm.para_arg1 || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_ARG2}}\u0027, value: lm.para_arg2 || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_COMPETENCES}}\u0027, value: lm.para_competences || \u0027\u0027 },\n  { placeholder: \u0027{{PARA_CONCLUSION}}\u0027, value: lm.para_conclusion || \u0027\u0027 },\n  { placeholder: \u0027{{FORMULE_POLITESSE}}\u0027, value: lm.formule_politesse || \u0027\u0027 }\n];\n\nconst requests = replacements.map(r =\u003e ({\n  replaceAllText: {\n    containsText: { text: r.placeholder, matchCase: true },\n    replaceText: r.value\n  }\n}));\n\nreturn [{\n  json: {\n    newDocId,\n    docUrl: `https://docs.google.com/document/d/${newDocId}/edit`,\n    requests,\n    profil: lmData.profil,\n    req: lmData.req\n  }\n}];\n"
+                                                           },
+                                            "id":  "4195d83a-0872-4038-9f5e-953b3fcbe400",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr?parer replacements",
+                                            "position":  [
+                                                             2440,
+                                                             100
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "=https://docs.googleapis.com/v1/documents/{{ $json.newDocId }}:batchUpdate",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "googleDriveOAuth2Api",
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ requests: $json.requests }) }}",
+                                                               "options":  {
+                                                                               "timeout":  15000
+                                                                           }
+                                                           },
+                                            "id":  "68d2cafc-efa2-434d-8f76-efc48bcec354",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "credentials":  {
+                                                                "googleDriveOAuth2Api":  {
+                                                                                             "id":  "Hj4G4cE5XF9QOynW",
+                                                                                             "name":  "Google Drive account 2"
+                                                                                         }
+                                                            },
+                                            "name":  "HTTP - batchUpdate Google Docs",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             2660,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "=https://www.googleapis.com/drive/v3/files/{{ $(\u0027Code - Pr?parer replacements\u0027).item.json.newDocId }}/permissions",
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "googleDriveOAuth2Api",
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ role: \u0027writer\u0027, type: \u0027user\u0027, emailAddress: $(\u0027Code - Pr?parer replacements\u0027).item.json.profil.email }) }}",
+                                                               "options":  {
+                                                                               "timeout":  10000
+                                                                           }
+                                                           },
+                                            "id":  "2099b416-a79d-4c18-a732-4084ec26d54b",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "credentials":  {
+                                                                "googleDriveOAuth2Api":  {
+                                                                                             "id":  "Hj4G4cE5XF9QOynW",
+                                                                                             "name":  "Google Drive account 2"
+                                                                                         }
+                                                            },
+                                            "name":  "HTTP - Partager LM",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             2880,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "operation":  "create",
+                                                               "tableId":  "candidatures",
+                                                               "fieldsUi":  {
+                                                                                "fieldValues":  [
+                                                                                                    {
+                                                                                                        "fieldId":  "user_id",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.profil.id }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "titre_poste",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.req.titre_poste }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "entreprise",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.req.entreprise }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "url_offre",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.req.url_offre }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "statut",
+                                                                                                        "fieldValue":  "A envoyer"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "date_candidature",
+                                                                                                        "fieldValue":  "={{ new Date().toISOString().split(\u0027T\u0027)[0] }}"
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "fieldId":  "lettre_generee",
+                                                                                                        "fieldValue":  "={{ $(\u0027Code - Pr?parer replacements\u0027).item.json.docUrl }}"
+                                                                                                    }
+                                                                                                ]
+                                                                            }
+                                                           },
+                                            "id":  "2da0c122-bf55-4be0-a04c-fe69265ea559",
+                                            "type":  "n8n-nodes-base.supabase",
+                                            "credentials":  {
+                                                                "supabaseApi":  {
+                                                                                    "id":  "8KEISLMo2kUMmv86",
+                                                                                    "name":  "Supabase account"
+                                                                                }
+                                                            },
+                                            "onError":  "continueRegularOutput",
+                                            "name":  "Supabase - Logger candidature",
+                                            "alwaysOutputData":  true,
+                                            "position":  [
+                                                             3100,
+                                                             100
+                                                         ],
+                                            "typeVersion":  1
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "jsCode":  "// Pr?parer l\u0027email de livraison LM\nconst profil = $(\u0027Code - Pr?parer replacements\u0027).item.json.profil;\nconst req = $(\u0027Code - Pr?parer replacements\u0027).item.json.req;\nconst docUrl = $(\u0027Code - Pr?parer replacements\u0027).item.json.docUrl;\nconst candidatureId = $(\u0027Supabase - Logger candidature\u0027).item.json.id;\n\nconst html = `\n\u003cdiv style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\"\u003e\n  \u003ch2 style=\"color: #2563eb;\"\u003e?? Votre lettre de motivation est pr?te !\u003c/h2\u003e\n  \u003cp\u003eBonjour ${profil.nom || \u0027\u0027},\u003c/p\u003e\n  \u003cp\u003eVotre lettre de motivation pour le poste de \u003cstrong\u003e${req.titre_poste}\u003c/strong\u003e chez \u003cstrong\u003e${req.entreprise}\u003c/strong\u003e a ?t? g?n?r?e.\u003c/p\u003e\n  \u003cdiv style=\"text-align: center; margin: 24px 0;\"\u003e\n    \u003ca href=\"${docUrl}\" style=\"display:inline-block; padding:12px 24px; background:#2563eb; color:white; border-radius:8px; text-decoration:none; font-size:16px;\"\u003e\n      Voir ma lettre de motivation ?\n    \u003c/a\u003e\n  \u003c/div\u003e\n  \u003cdiv style=\"background:#fef3c7; padding:12px; border-radius:8px; margin-top:16px;\"\u003e\n    \u003cp style=\"margin:0;\"\u003e?? \u003cstrong\u003eConseil :\u003c/strong\u003e Personnalisez les sections avant d\u0027envoyer votre candidature. V?rifiez notamment :\u003c/p\u003e\n    \u003cul style=\"margin:8px 0 0; padding-left:20px;\"\u003e\n      \u003cli\u003eLes coordonn?es du destinataire\u003c/li\u003e\n      \u003cli\u003eLes exemples concrets de vos r?alisations\u003c/li\u003e\n      \u003cli\u003eL\u0027orthographe de votre nom et adresse\u003c/li\u003e\n    \u003c/ul\u003e\n  \u003c/div\u003e\n  \u003cp style=\"color:#6b7280; font-size:12px; margin-top:24px;\"\u003eVous pouvez suivre vos candidatures en r?pondant ? cet email.\u003c/p\u003e\n\u003c/div\u003e\n`;\n\nreturn [{\n  json: {\n    email: profil.email,\n    subject: `?? Votre lettre de motivation - ${req.titre_poste} chez ${req.entreprise}`,\n    html,\n    candidature_id: candidatureId,\n    lm_url: docUrl\n  }\n}];\n"
+                                                           },
+                                            "id":  "d9582fcb-4200-4c29-94f1-ff9199041532",
+                                            "type":  "n8n-nodes-base.code",
+                                            "name":  "Code - Pr?parer email LM",
+                                            "position":  [
+                                                             3320,
+                                                             100
+                                                         ],
+                                            "typeVersion":  2
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "method":  "POST",
+                                                               "url":  "https://api.resend.com/emails",
+                                                               "sendHeaders":  true,
+                                                               "headerParameters":  {
+                                                                                        "parameters":  [
+                                                                                                           {
+                                                                                                               "name":  "Content-Type",
+                                                                                                               "value":  "application/json"
+                                                                                                           }
+                                                                                                       ]
+                                                                                    },
+                                                               "sendBody":  true,
+                                                               "specifyBody":  "json",
+                                                               "jsonBody":  "={{ JSON.stringify({ from: \u0027ApplyFlow \u003cnoreply@applyflow.ch\u003e\u0027, to: [$json.email], subject: $json.subject, html: $json.html }) }}",
+                                                               "options":  {
+                                                                               "timeout":  10000
+                                                                           },
+                                                               "authentication":  "predefinedCredentialType",
+                                                               "nodeCredentialType":  "httpHeaderAuth"
+                                                           },
+                                            "id":  "b4aa24a0-e6d7-4d89-847a-7492e139270f",
+                                            "type":  "n8n-nodes-base.httpRequest",
+                                            "name":  "HTTP - Envoyer LM Resend",
+                                            "onError":  "continueRegularOutput",
+                                            "position":  [
+                                                             3540,
+                                                             100
+                                                         ],
+                                            "typeVersion":  4.2,
+                                            "credentials":  {
+                                                                "httpHeaderAuth":  {
+                                                                                       "id":  "tc2f1NdNXAUtStcp",
+                                                                                       "name":  "Resend API"
+                                                                                   }
+                                                            }
+                                        },
+                                        {
+                                            "parameters":  {
+                                                               "respondWith":  "json",
+                                                               "responseBody":  "={{ JSON.stringify({ success: true, candidature_id: $(\u0027Code - Pr?parer email LM\u0027).item.json.candidature_id, lm_url: $(\u0027Code - Pr?parer email LM\u0027).item.json.lm_url, email_sent: true }) }}",
+                                                               "options":  {
+                                                                               "responseCode":  200
+                                                                           }
+                                                           },
+                                            "id":  "9c6a8c79-ca03-4c01-8059-846156b9e279",
+                                            "type":  "n8n-nodes-base.respondToWebhook",
+                                            "name":  "Respond - 200 Succ?s",
+                                            "position":  [
+                                                             3760,
+                                                             100
+                                                         ],
+                                            "typeVersion":  1
+                                        }
+                                    ],
+                          "connections":  {
+                                              "Webhook - POST /generate-lm":  {
+                                                                                  "main":  [
+                                                                                               [
+                                                                                                   {
+                                                                                                       "node":  "Code - Valider requ?te",
+                                                                                                       "type":  "main",
+                                                                                                       "index":  0
+                                                                                                   }
+                                                                                               ]
+                                                                                           ]
+                                                                              },
+                                              "Code - Valider requ?te":  {
+                                                                             "main":  [
+                                                                                          [
+                                                                                              {
+                                                                                                  "node":  "IF - Requ?te valide ?",
+                                                                                                  "type":  "main",
+                                                                                                  "index":  0
+                                                                                              }
+                                                                                          ]
+                                                                                      ]
+                                                                         },
+                                              "IF - Requ?te valide ?":  {
+                                                                            "main":  [
+                                                                                         [
+                                                                                             {
+                                                                                                 "node":  "Supabase - R?cup?rer profil",
+                                                                                                 "type":  "main",
+                                                                                                 "index":  0
+                                                                                             }
+                                                                                         ],
+                                                                                         [
+                                                                                             {
+                                                                                                 "node":  "Respond - 422 Validation",
+                                                                                                 "type":  "main",
+                                                                                                 "index":  0
+                                                                                             }
+                                                                                         ]
+                                                                                     ]
+                                                                        },
+                                              "Supabase - R?cup?rer profil":  {
+                                                                                  "main":  [
+                                                                                               [
+                                                                                                   {
+                                                                                                       "node":  "Supabase - R?cup?rer pr?f?rences",
+                                                                                                       "type":  "main",
+                                                                                                       "index":  0
+                                                                                                   }
+                                                                                               ]
+                                                                                           ]
+                                                                              },
+                                              "Supabase - R?cup?rer pr?f?rences":  {
+                                                                                       "main":  [
+                                                                                                    [
+                                                                                                        {
+                                                                                                            "node":  "IF - Plan Pro ou Booster ?",
+                                                                                                            "type":  "main",
+                                                                                                            "index":  0
+                                                                                                        }
+                                                                                                    ]
+                                                                                                ]
+                                                                                   },
+                                              "IF - Plan Pro ou Booster ?":  {
+                                                                                 "main":  [
+                                                                                              [
+                                                                                                  {
+                                                                                                      "node":  "Code - Pr?parer prompt LM",
+                                                                                                      "type":  "main",
+                                                                                                      "index":  0
+                                                                                                  }
+                                                                                              ],
+                                                                                              [
+                                                                                                  {
+                                                                                                      "node":  "Respond - 403 Plan insuffisant",
+                                                                                                      "type":  "main",
+                                                                                                      "index":  0
+                                                                                                  }
+                                                                                              ]
+                                                                                          ]
+                                                                             },
+                                              "Code - Pr?parer prompt LM":  {
+                                                                                "main":  [
+                                                                                             [
+                                                                                                 {
+                                                                                                     "node":  "HTTP - Claude G?n?rer LM",
+                                                                                                     "type":  "main",
+                                                                                                     "index":  0
+                                                                                                 }
+                                                                                             ]
+                                                                                         ]
+                                                                            },
+                                              "HTTP - Claude G?n?rer LM":  {
+                                                                               "main":  [
+                                                                                            [
+                                                                                                {
+                                                                                                    "node":  "Code - Parser LM Claude",
+                                                                                                    "type":  "main",
+                                                                                                    "index":  0
+                                                                                                }
+                                                                                            ]
+                                                                                        ]
+                                                                           },
+                                              "Code - Parser LM Claude":  {
+                                                                              "main":  [
+                                                                                           [
+                                                                                               {
+                                                                                                   "node":  "HTTP - Copier template LM",
+                                                                                                   "type":  "main",
+                                                                                                   "index":  0
+                                                                                               }
+                                                                                           ]
+                                                                                       ]
+                                                                          },
+                                              "HTTP - Copier template LM":  {
+                                                                                "main":  [
+                                                                                             [
+                                                                                                 {
+                                                                                                     "node":  "Code - Pr?parer replacements",
+                                                                                                     "type":  "main",
+                                                                                                     "index":  0
+                                                                                                 }
+                                                                                             ]
+                                                                                         ]
+                                                                            },
+                                              "Code - Pr?parer replacements":  {
+                                                                                   "main":  [
+                                                                                                [
+                                                                                                    {
+                                                                                                        "node":  "HTTP - batchUpdate Google Docs",
+                                                                                                        "type":  "main",
+                                                                                                        "index":  0
+                                                                                                    }
+                                                                                                ]
+                                                                                            ]
+                                                                               },
+                                              "HTTP - batchUpdate Google Docs":  {
+                                                                                     "main":  [
+                                                                                                  [
+                                                                                                      {
+                                                                                                          "node":  "HTTP - Partager LM",
+                                                                                                          "type":  "main",
+                                                                                                          "index":  0
+                                                                                                      }
+                                                                                                  ]
+                                                                                              ]
+                                                                                 },
+                                              "HTTP - Partager LM":  {
+                                                                         "main":  [
+                                                                                      [
+                                                                                          {
+                                                                                              "node":  "Supabase - Logger candidature",
+                                                                                              "type":  "main",
+                                                                                              "index":  0
+                                                                                          }
+                                                                                      ]
+                                                                                  ]
+                                                                     },
+                                              "Supabase - Logger candidature":  {
+                                                                                    "main":  [
+                                                                                                 [
+                                                                                                     {
+                                                                                                         "node":  "Code - Pr?parer email LM",
+                                                                                                         "type":  "main",
+                                                                                                         "index":  0
+                                                                                                     }
+                                                                                                 ]
+                                                                                             ]
+                                                                                },
+                                              "Code - Pr?parer email LM":  {
+                                                                               "main":  [
+                                                                                            [
+                                                                                                {
+                                                                                                    "node":  "HTTP - Envoyer LM Resend",
+                                                                                                    "type":  "main",
+                                                                                                    "index":  0
+                                                                                                }
+                                                                                            ]
+                                                                                        ]
+                                                                           },
+                                              "HTTP - Envoyer LM Resend":  {
+                                                                               "main":  [
+                                                                                            [
+                                                                                                {
+                                                                                                    "node":  "Respond - 200 Succ?s",
+                                                                                                    "type":  "main",
+                                                                                                    "index":  0
+                                                                                                }
+                                                                                            ]
+                                                                                        ]
+                                                                           }
+                                          },
+                          "authors":  "Paul Zurkinden",
+                          "name":  null,
+                          "description":  null
+                      }
+}
