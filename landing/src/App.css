@@ -1,0 +1,10 @@
+/* App.css — ApplyFlow */
+/* BUG-023 fix: Only CSS custom properties here.
+   All component styling is done via Tailwind utility classes in JSX.
+   Do not add component-level overrides here — they conflict with Tailwind v4. */
+
+:root {
+  --color-primary: #4f46e5;
+  --color-primary-dark: #4338ca;
+  --color-accent: #7c3aed;
+}
