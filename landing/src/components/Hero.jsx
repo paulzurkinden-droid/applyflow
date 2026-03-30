@@ -8,22 +8,23 @@ export default function Hero() {
       </div>
 
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-24">
-        {/* Social proof badge */}
+        {/* Neutral badge — BUG-020 fix: removed false "200+" social proof claim */}
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8">
-          <span className="text-yellow-400 text-lg">⭐</span>
-          <span className="text-sm font-medium">Rejoignez 200+ chercheurs d'emploi en Suisse romande</span>
+          <span className="text-yellow-400 text-lg">&#127464;&#127469;</span>
+          <span className="text-sm font-medium">Conçu pour les chercheurs d&apos;emploi en Suisse romande</span>
         </div>
 
         {/* Headline */}
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
           Trouvez votre prochain emploi{' '}
           <span className="text-yellow-400">plus vite</span>{' '}
-          grâce à l'IA
+          grâce à l&apos;IA
         </h1>
 
         {/* Subheadline */}
         <p className="text-xl sm:text-2xl text-indigo-100 mb-10 max-w-2xl mx-auto leading-relaxed">
-          ApplyFlow automatise votre recherche d'emploi en Suisse romande : alertes personnalisées, offres scorées par l'IA et lettres de motivation générées en 1 clic.
+          ApplyFlow automatise votre recherche d&apos;emploi en Suisse romande : alertes personnalisées,
+          offres scorées par l&apos;IA et lettres de motivation générées en 1 clic.
         </p>
 
         {/* CTAs */}
@@ -34,7 +35,7 @@ export default function Hero() {
             rel="noopener noreferrer"
             className="bg-white text-indigo-700 px-8 py-4 rounded-full font-bold text-lg hover:bg-indigo-50 transition-colors shadow-xl"
           >
-            Commencer gratuitement →
+            Commencer gratuitement &rarr;
           </a>
           <a
             href="#comment-ca-marche"
@@ -47,15 +48,15 @@ export default function Hero() {
         {/* Trust indicators */}
         <div className="mt-12 flex flex-wrap justify-center gap-6 text-indigo-200 text-sm">
           <div className="flex items-center gap-2">
-            <span>✅</span>
+            <span>&#10003;</span>
             <span>Sans carte bancaire</span>
           </div>
           <div className="flex items-center gap-2">
-            <span>🇨🇭</span>
+            <span>&#127464;&#127469;</span>
             <span>Fait pour la Suisse romande</span>
           </div>
           <div className="flex items-center gap-2">
-            <span>⚡</span>
+            <span>&#9889;</span>
             <span>Actif en 2 minutes</span>
           </div>
         </div>
