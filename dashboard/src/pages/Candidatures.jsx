@@ -17,12 +17,21 @@ export default function Candidatures() {
   const [generating, setGenerating] = useState(null);
 
   useEffect(() => {
-    async function load() {
+async function load() {
       const { data: { user } } = await supabase.auth.getUser();
+
+      const { data: profil } = await supabase
+        .from('profils')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profil) { setLoading(false); return; }
+
       const { data } = await supabase
         .from('candidatures')
-        .select('id, titre_poste, entreprise, statut, date_candidature, lettre_generee, url_offre, description_offre')
-        .eq('user_id', user.id)
+        .select('*')
+        .eq('user_id', profil.id)
         .order('date_candidature', { ascending: false });
       setCandidatures(data ?? []);
       setLoading(false);

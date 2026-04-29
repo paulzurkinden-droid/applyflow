@@ -12,12 +12,22 @@ export default function Offres() {
   const [minScore, setMinScore] = useState(0);
 
   useEffect(() => {
-    async function load() {
+async function load() {
       const { data: { user } } = await supabase.auth.getUser();
+
+      // Récupérer le profil via le user_id Auth
+      const { data: profil } = await supabase
+        .from('profils')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profil) { setLoading(false); return; }
+
       const { data } = await supabase
         .from('offres_alertes')
         .select('id, titre, entreprise, localisation, score, raison, date_trouvee, url, envoyee, ignoree')
-        .eq('user_id', user.id)
+        .eq('user_id', profil.id)
         .order('date_trouvee', { ascending: false });
       setOffers(data ?? []);
       setLoading(false);
@@ -25,10 +35,29 @@ export default function Offres() {
     load();
   }, []);
 
-  const handlePostuler = async (offer) => {
-    if (offer.url) window.open(offer.url, '_blank');
+const handlePostuler = async (offer) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Créer la candidature
+    await supabase.from('candidatures').insert({
+      user_id: user.id,
+      titre_poste: offer.titre,
+      entreprise: offer.entreprise,
+      url_offre: offer.url,
+      description_offre: offer.raison || '',
+      statut: 'En attente',
+      date_candidature: new Date().toISOString().substring(0, 10),
+      offre_alerte_id: offer.id,
+    });
+
+    // Marquer l'offre comme envoyée
     await supabase.from('offres_alertes').update({ envoyee: true }).eq('id', offer.id);
-    setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, envoyee: true } : o));
+
+    // Retirer l'offre de la liste
+    setOffers(prev => prev.filter(o => o.id !== offer.id));
+
+    // Ouvrir l'URL de l'offre
+    if (offer.url) window.open(offer.url, '_blank');
   };
 
   const handleIgnorer = async (id) => {
@@ -36,7 +65,7 @@ export default function Offres() {
     setOffers(prev => prev.filter(o => o.id !== id));
   };
 
-  const filtered = offers.filter(o => !o.ignoree && o.score >= minScore);
+ const filtered = offers.filter(o => !o.ignoree && !o.envoyee && o.score >= minScore);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -86,7 +115,7 @@ export default function Offres() {
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{offer.localisation ?? '—'}</td>
                     <td className="px-4 py-3"><ScoreBadge score={offer.score} /></td>
                     <td className="px-4 py-3 text-slate-500 max-w-56">
-                      <div className="text-xs line-clamp-2">{offer.raison ?? '—'}</div>
+                      <div className="text-xs line-clamp-4">{offer.raison ?? '—'}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                       {offer.date_trouvee ? new Date(offer.date_trouvee).toLocaleDateString('fr-CH') : '—'}

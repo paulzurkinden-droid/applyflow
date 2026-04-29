@@ -28,9 +28,20 @@ export default function Home() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Récupérer le profil via le user_id Auth
+      const { data: profil } = await supabase
+        .from('profils')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profil) { setLoading(false); return; }
+
+      const profilId = profil.id;
+
       const [offresRes, candidaturesRes] = await Promise.all([
-        supabase.from('offres_alertes').select('id, score', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('candidatures').select('id, lettre_generee', { count: 'exact' }).eq('user_id', user.id),
+        supabase.from('offres_alertes').select('id, score', { count: 'exact' }).eq('user_id', profilId),
+        supabase.from('candidatures').select('id, lettre_generee', { count: 'exact' }).eq('user_id', profilId),
       ]);
 
       const envoyees = candidaturesRes.data?.filter(c => c.lettre_generee).length ?? 0;
@@ -44,7 +55,7 @@ export default function Home() {
       const { data: recent } = await supabase
         .from('offres_alertes')
         .select('id, titre, entreprise, score, date_trouvee, url')
-        .eq('user_id', user.id)
+        .eq('user_id', profilId)
         .order('date_trouvee', { ascending: false })
         .limit(10);
 
