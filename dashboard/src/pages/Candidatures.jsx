@@ -19,19 +19,12 @@ export default function Candidatures() {
   useEffect(() => {
 async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-
-      const { data: profil } = await supabase
-        .from('profils')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profil) { setLoading(false); return; }
+      if (!user) { setLoading(false); return; }
 
       const { data } = await supabase
         .from('candidatures')
         .select('*')
-        .eq('user_id', profil.id)
+        .eq('user_id', user.id)
         .order('date_candidature', { ascending: false });
       setCandidatures(data ?? []);
       setLoading(false);
