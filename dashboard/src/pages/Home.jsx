@@ -10,7 +10,7 @@ function StatCard({ label, value, icon, color, onClick }) {
     >
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${color}`}>{icon}</div>
       <div>
-        <p className="text-2xl font-extrabold text-slate-900">{value ?? '\u2014'}</p>
+        <p className="text-2xl font-extrabold text-slate-900">{value ?? '—'}</p>
         <p className="text-sm text-slate-500">{label}</p>
       </div>
     </div>
@@ -34,7 +34,6 @@ export default function Home() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // R\u00E9cup\u00E9rer le profil via le user_id Auth
       const { data: profilData } = await supabase
         .from('profils')
         .select('id, nom, plan, adresse, telephone, ville')
@@ -47,9 +46,7 @@ export default function Home() {
       const profilId = profilData.id;
 
       const [offresRes, candidaturesRes] = await Promise.all([
-        // offres_alertes.user_id = profils.id
         supabase.from('offres_alertes').select('id, score', { count: 'exact' }).eq('user_id', profilId),
-        // candidatures.user_id = auth.users.id (Auth UID)
         supabase.from('candidatures').select('id, lettre_generee', { count: 'exact' }).eq('user_id', user.id),
       ]);
 
@@ -86,7 +83,7 @@ export default function Home() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold text-slate-900">
-          {profil?.nom ? `Bonjour ${profil.nom.split(' ')[0]}` : 'Tableau de bord'}
+          {profil?.nom ? 'Bonjour ' + profil.nom.split(' ')[0] : 'Tableau de bord'}
         </h1>
         <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${
           profil?.plan === 'booster' ? 'bg-violet-100 text-violet-700' :
@@ -97,63 +94,60 @@ export default function Home() {
         </span>
       </div>
 
-      {/* Alerte profil incomplet */}
       {profilIncomplet && (
         <div
           onClick={() => navigate('/profil')}
           className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:border-amber-300 transition-colors"
         >
-          <span className="text-2xl">{'\u26A0\uFE0F'}</span>
+          <span className="text-2xl">&#9888;&#65039;</span>
           <div>
-            <p className="text-sm font-semibold text-amber-800">Compl\u00E9tez vos coordonn\u00E9es</p>
-            <p className="text-xs text-amber-600">Adresse, t\u00E9l\u00E9phone et ville sont requis pour g\u00E9n\u00E9rer vos lettres de motivation.</p>
+            <p className="text-sm font-semibold text-amber-800">{'Compl\u00e9tez vos coordonn\u00e9es'}</p>
+            <p className="text-xs text-amber-600">{'Adresse, t\u00e9l\u00e9phone et ville sont requis pour g\u00e9n\u00e9rer vos lettres de motivation.'}</p>
           </div>
-          <span className="ml-auto text-amber-400 text-lg">{'\u2192'}</span>
+          <span className="ml-auto text-amber-400 text-lg">&#8594;</span>
         </div>
       )}
 
-      {/* Stats cliquables */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
-          label="Offres trouv\u00E9es"
+          label={'Offres trouv\u00e9es'}
           value={stats.offres}
-          icon={'\uD83D\uDD0D'}
+          icon="&#128269;"
           color="bg-indigo-50"
           onClick={() => navigate('/offres')}
         />
         <StatCard
           label="Candidatures"
           value={stats.candidatures}
-          icon={'\uD83D\uDCCB'}
+          icon="&#128203;"
           color="bg-violet-50"
           onClick={() => navigate('/candidatures')}
         />
         <StatCard
-          label="LM g\u00E9n\u00E9r\u00E9es"
+          label={'LM g\u00e9n\u00e9r\u00e9es'}
           value={stats.lmGenerees}
-          icon={'\u270D\uFE0F'}
+          icon="&#9997;&#65039;"
           color="bg-green-50"
           onClick={() => navigate('/candidatures')}
         />
       </div>
 
-      {/* Derni\u00E8res offres */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-bold text-slate-900">Derni\u00E8res offres</h2>
+          <h2 className="font-bold text-slate-900">{'Derni\u00e8res offres'}</h2>
           {recentOffers.length > 0 && (
             <button
               onClick={() => navigate('/offres')}
               className="text-xs text-indigo-600 font-semibold hover:underline"
             >
-              Voir toutes les offres {'\u2192'}
+              {'Voir toutes les offres \u2192'}
             </button>
           )}
         </div>
         {recentOffers.length === 0 ? (
           <div className="text-center py-10 space-y-3">
-            <p className="text-slate-400 text-sm">Aucune offre re\u00E7ue pour l&apos;instant.</p>
-            <p className="text-slate-400 text-xs">Les offres correspondant \u00E0 votre profil appara\u00EEtront ici automatiquement.</p>
+            <p className="text-slate-400 text-sm">{"Aucune offre re\u00e7ue pour l'instant."}</p>
+            <p className="text-slate-400 text-xs">{"Les offres correspondant \u00e0 votre profil appara\u00eetront ici automatiquement."}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
