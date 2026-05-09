@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-function StatCard({ label, value, icon, color }) {
+function StatCard({ label, value, icon, color, onClick }) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4">
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4 ${onClick ? 'cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all' : ''}`}
+    >
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${color}`}>{icon}</div>
       <div>
-        <p className="text-2xl font-extrabold text-slate-900">{value ?? '—'}</p>
+        <p className="text-2xl font-extrabold text-slate-900">{value ?? '\u2014'}</p>
         <p className="text-sm text-slate-500">{label}</p>
       </div>
     </div>
@@ -19,37 +23,42 @@ function ScoreBadge({ score }) {
 }
 
 export default function Home() {
+  const [profil, setProfil] = useState(null);
   const [stats, setStats] = useState({});
   const [recentOffers, setRecentOffers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Récupérer le profil via le user_id Auth
-      const { data: profil } = await supabase
+      // R\u00E9cup\u00E9rer le profil via le user_id Auth
+      const { data: profilData } = await supabase
         .from('profils')
-        .select('id')
+        .select('id, nom, plan, adresse, telephone, ville')
         .eq('user_id', user.id)
         .single();
 
-      if (!profil) { setLoading(false); return; }
+      if (!profilData) { setLoading(false); return; }
+      setProfil(profilData);
 
-      const profilId = profil.id;
+      const profilId = profilData.id;
 
       const [offresRes, candidaturesRes] = await Promise.all([
+        // offres_alertes.user_id = profils.id
         supabase.from('offres_alertes').select('id, score', { count: 'exact' }).eq('user_id', profilId),
-        supabase.from('candidatures').select('id, lettre_generee', { count: 'exact' }).eq('user_id', profilId),
+        // candidatures.user_id = auth.users.id (Auth UID)
+        supabase.from('candidatures').select('id, lettre_generee', { count: 'exact' }).eq('user_id', user.id),
       ]);
 
-      const envoyees = candidaturesRes.data?.filter(c => c.lettre_generee).length ?? 0;
+      const lmGenerees = candidaturesRes.data?.filter(c => c.lettre_generee).length ?? 0;
 
       setStats({
         offres: offresRes.count ?? 0,
         candidatures: candidaturesRes.count ?? 0,
-        lmGenerees: envoyees,
+        lmGenerees,
       });
 
       const { data: recent } = await supabase
@@ -71,22 +80,81 @@ export default function Home() {
     </div>
   );
 
+  const profilIncomplet = profil && (!profil.adresse || !profil.telephone || !profil.ville);
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-extrabold text-slate-900">Tableau de bord</h1>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Offres trouvées" value={stats.offres} icon="🔍" color="bg-indigo-50" />
-        <StatCard label="Candidatures" value={stats.candidatures} icon="📋" color="bg-violet-50" />
-        <StatCard label="LM générées" value={stats.lmGenerees} icon="✍️" color="bg-green-50" />
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-extrabold text-slate-900">
+          {profil?.nom ? `Bonjour ${profil.nom.split(' ')[0]}` : 'Tableau de bord'}
+        </h1>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${
+          profil?.plan === 'booster' ? 'bg-violet-100 text-violet-700' :
+          profil?.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' :
+          'bg-slate-100 text-slate-700'
+        }`}>
+          {profil?.plan ?? 'starter'}
+        </span>
       </div>
 
+      {/* Alerte profil incomplet */}
+      {profilIncomplet && (
+        <div
+          onClick={() => navigate('/profil')}
+          className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 cursor-pointer hover:border-amber-300 transition-colors"
+        >
+          <span className="text-2xl">{'\u26A0\uFE0F'}</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Compl\u00E9tez vos coordonn\u00E9es</p>
+            <p className="text-xs text-amber-600">Adresse, t\u00E9l\u00E9phone et ville sont requis pour g\u00E9n\u00E9rer vos lettres de motivation.</p>
+          </div>
+          <span className="ml-auto text-amber-400 text-lg">{'\u2192'}</span>
+        </div>
+      )}
+
+      {/* Stats cliquables */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          label="Offres trouv\u00E9es"
+          value={stats.offres}
+          icon={'\uD83D\uDD0D'}
+          color="bg-indigo-50"
+          onClick={() => navigate('/offres')}
+        />
+        <StatCard
+          label="Candidatures"
+          value={stats.candidatures}
+          icon={'\uD83D\uDCCB'}
+          color="bg-violet-50"
+          onClick={() => navigate('/candidatures')}
+        />
+        <StatCard
+          label="LM g\u00E9n\u00E9r\u00E9es"
+          value={stats.lmGenerees}
+          icon={'\u270D\uFE0F'}
+          color="bg-green-50"
+          onClick={() => navigate('/candidatures')}
+        />
+      </div>
+
+      {/* Derni\u00E8res offres */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="font-bold text-slate-900">Dernières offres</h2>
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="font-bold text-slate-900">Derni\u00E8res offres</h2>
+          {recentOffers.length > 0 && (
+            <button
+              onClick={() => navigate('/offres')}
+              className="text-xs text-indigo-600 font-semibold hover:underline"
+            >
+              Voir toutes les offres {'\u2192'}
+            </button>
+          )}
         </div>
         {recentOffers.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-10">Aucune offre reçue pour l&apos;instant.</p>
+          <div className="text-center py-10 space-y-3">
+            <p className="text-slate-400 text-sm">Aucune offre re\u00E7ue pour l&apos;instant.</p>
+            <p className="text-slate-400 text-xs">Les offres correspondant \u00E0 votre profil appara\u00EEtront ici automatiquement.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -107,9 +175,9 @@ export default function Home() {
                         </a>
                       ) : offer.titre}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{offer.entreprise ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{offer.entreprise ?? '\u2014'}</td>
                     <td className="px-4 py-3"><ScoreBadge score={offer.score} /></td>
-                    <td className="px-4 py-3 text-slate-500">{offer.date_trouvee ? new Date(offer.date_trouvee).toLocaleDateString('fr-CH') : '—'}</td>
+                    <td className="px-4 py-3 text-slate-500">{offer.date_trouvee ? new Date(offer.date_trouvee).toLocaleDateString('fr-CH') : '\u2014'}</td>
                   </tr>
                 ))}
               </tbody>
