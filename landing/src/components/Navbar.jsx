@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+const DASHBOARD_URL = 'https://dashboard.applyflow.ch';
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -15,7 +17,7 @@ export default function Navbar() {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
             <a href="#fonctionnalites" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
-              Fonctionnalités
+              Fonctionnalit&eacute;s
             </a>
             <a href="#tarifs" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
               Tarifs
@@ -24,12 +26,16 @@ export default function Navbar() {
               FAQ
             </a>
             <a
-              href="https://tally.so/r/b5kE41"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={DASHBOARD_URL}
+              className="text-slate-600 hover:text-indigo-600 transition-colors font-medium"
+            >
+              Se connecter
+            </a>
+            <a
+              href="#tarifs"
               className="bg-indigo-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-indigo-700 transition-colors"
             >
-              Commencer gratuitement
+              S&apos;inscrire
             </a>
           </div>
 
@@ -55,7 +61,7 @@ export default function Navbar() {
         {menuOpen && (
           <div className="md:hidden pb-4 flex flex-col gap-4">
             <a href="#fonctionnalites" className="text-slate-600 hover:text-indigo-600 font-medium" onClick={() => setMenuOpen(false)}>
-              Fonctionnalités
+              Fonctionnalit&eacute;s
             </a>
             <a href="#tarifs" className="text-slate-600 hover:text-indigo-600 font-medium" onClick={() => setMenuOpen(false)}>
               Tarifs
@@ -64,12 +70,18 @@ export default function Navbar() {
               FAQ
             </a>
             <a
-              href="https://tally.so/r/b5kE41"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-indigo-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-indigo-700 transition-colors text-center"
+              href={DASHBOARD_URL}
+              className="text-slate-600 hover:text-indigo-600 font-medium"
+              onClick={() => setMenuOpen(false)}
             >
-              Commencer gratuitement
+              Se connecter
+            </a>
+            <a
+              href="#tarifs"
+              className="bg-indigo-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-indigo-700 transition-colors text-center"
+              onClick={() => setMenuOpen(false)}
+            >
+              S&apos;inscrire
             </a>
           </div>
         )}
