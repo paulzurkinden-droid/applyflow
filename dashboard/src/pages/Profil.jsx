@@ -14,8 +14,9 @@ export default function Profil() {
   const [saved, setSaved] = useState(false);
   const [editFields, setEditFields] = useState({
     adresse: '',
-    telephone: '',
+    npa: '',
     ville: '',
+    telephone: '',
   });
 
   useEffect(() => {
@@ -30,8 +31,9 @@ export default function Profil() {
       if (data) {
         setEditFields({
           adresse: data.adresse ?? '',
-          telephone: data.telephone ?? '',
+          npa: data.npa ?? '',
           ville: data.ville ?? '',
+          telephone: data.telephone ?? '',
         });
       }
       setLoading(false);
@@ -50,8 +52,9 @@ export default function Profil() {
       .from('profils')
       .update({
         adresse: editFields.adresse,
-        telephone: editFields.telephone,
+        npa: editFields.npa,
         ville: editFields.ville,
+        telephone: editFields.telephone,
       })
       .eq('id', profil.id);
 
@@ -67,8 +70,9 @@ export default function Profil() {
 
   const hasChanges =
     editFields.adresse !== (profil?.adresse ?? '') ||
-    editFields.telephone !== (profil?.telephone ?? '') ||
-    editFields.ville !== (profil?.ville ?? '');
+    editFields.npa !== (profil?.npa ?? '') ||
+    editFields.ville !== (profil?.ville ?? '') ||
+    editFields.telephone !== (profil?.telephone ?? '');
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -88,14 +92,8 @@ export default function Profil() {
   const readOnlyFields = [
     { label: 'Nom', value: profil.nom },
     { label: 'Email', value: profil.email },
-    { label: 'Membre depuis', value: profil.created_at ? new Date(profil.created_at).toLocaleDateString('fr-CH') : '\u2014' },
-    { label: 'Compte actif', value: profil.actif ? '\u2705 Actif' : '\u274C Inactif' },
-  ];
-
-  const editableFields = [
-    { key: 'adresse', label: 'Adresse', placeholder: 'rue du Bugnon 6 \u2013 1005 Lausanne' },
-    { key: 'telephone', label: 'T\u00E9l\u00E9phone', placeholder: '+41 (0)78 000 00 00' },
-    { key: 'ville', label: 'Ville', placeholder: 'Lausanne' },
+    { label: 'Membre depuis', value: profil.created_at ? new Date(profil.created_at).toLocaleDateString('fr-CH') : '—' },
+    { label: 'Compte actif', value: profil.actif ? '✅ Actif' : '❌ Inactif' },
   ];
 
   return (
@@ -114,7 +112,7 @@ export default function Profil() {
         {readOnlyFields.map(({ label, value }) => (
           <div key={label} className="flex justify-between items-center py-1">
             <span className="text-sm text-slate-500">{label}</span>
-            <span className="text-sm font-medium text-slate-900">{value ?? '\u2014'}</span>
+            <span className="text-sm font-medium text-slate-900">{value ?? '—'}</span>
           </div>
         ))}
         {profil.cv_url && (
@@ -122,65 +120,101 @@ export default function Profil() {
             <hr className="border-slate-100" />
             <div className="flex justify-between items-center py-1">
               <span className="text-sm text-slate-500">CV</span>
-              <a
-                href={profil.cv_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-indigo-600 hover:underline"
-              >
-                T&eacute;l&eacute;charger le CV &nearr;
+              <a href={profil.cv_url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-indigo-600 hover:underline">
+                Voir mon CV ↗
               </a>
             </div>
           </>
         )}
       </div>
 
-      {/* Coordonn\u00E9es \u00E9ditables */}
+      {/* Coordonnées éditables */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-bold text-slate-900">Mes coordonn&eacute;es</h2>
+          <h2 className="font-bold text-slate-900">Mes coordonnées</h2>
           {(!profil.adresse && !profil.telephone && !profil.ville) && (
             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
-              &#9888;&#65039; Requis pour g&eacute;n&eacute;rer des lettres de motivation
+              ⚠️ Requis pour les lettres de motivation
             </span>
           )}
         </div>
         <p className="text-sm text-slate-500">
-          Ces informations apparaissent sur vos lettres de motivation g&eacute;n&eacute;r&eacute;es.
+          Ces informations apparaissent sur vos lettres de motivation.
         </p>
         <hr className="border-slate-100" />
-        {editableFields.map(({ key, label, placeholder }) => (
-          <div key={key} className="space-y-1">
-            <label htmlFor={key} className="text-sm font-medium text-slate-600">{label}</label>
+
+        {/* Adresse (rue) */}
+        <div className="space-y-1">
+          <label htmlFor="adresse" className="text-sm font-medium text-slate-600">Rue et numéro</label>
+          <input
+            id="adresse"
+            type="text"
+            value={editFields.adresse}
+            onChange={e => handleFieldChange('adresse', e.target.value)}
+            placeholder="Rue du Bugnon 6"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"
+          />
+        </div>
+
+        {/* NPA + Ville sur la même ligne */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label htmlFor="npa" className="text-sm font-medium text-slate-600">NPA</label>
             <input
-              id={key}
+              id="npa"
               type="text"
-              value={editFields[key]}
-              onChange={e => handleFieldChange(key, e.target.value)}
-              placeholder={placeholder}
+              value={editFields.npa}
+              onChange={e => handleFieldChange('npa', e.target.value)}
+              placeholder="1005"
+              maxLength={4}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"
             />
           </div>
-        ))}
+          <div className="col-span-2 space-y-1">
+            <label htmlFor="ville" className="text-sm font-medium text-slate-600">Ville</label>
+            <input
+              id="ville"
+              type="text"
+              value={editFields.ville}
+              onChange={e => handleFieldChange('ville', e.target.value)}
+              placeholder="Lausanne"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"
+            />
+          </div>
+        </div>
+
+        {/* Téléphone */}
+        <div className="space-y-1">
+          <label htmlFor="telephone" className="text-sm font-medium text-slate-600">Téléphone</label>
+          <input
+            id="telephone"
+            type="text"
+            value={editFields.telephone}
+            onChange={e => handleFieldChange('telephone', e.target.value)}
+            placeholder="+41 79 000 00 00"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-shadow"
+          />
+        </div>
+
         <div className="flex items-center gap-3 pt-2">
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges}
             className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {saving ? 'Sauvegarde\u2026' : 'Enregistrer'}
+            {saving ? 'Sauvegarde…' : 'Enregistrer'}
           </button>
           {saved && (
-            <span className="text-sm text-green-600 font-medium">{'\u2705'} Coordonn&eacute;es mises &agrave; jour</span>
+            <span className="text-sm text-green-600 font-medium">✅ Coordonnées mises à jour</span>
           )}
         </div>
       </div>
 
       {/* Lien Tally */}
       <div className="bg-indigo-50 rounded-2xl p-6">
-        <h2 className="font-bold text-indigo-900 mb-2">Mettre &agrave; jour mes pr&eacute;f&eacute;rences</h2>
+        <h2 className="font-bold text-indigo-900 mb-2">Mettre à jour mes préférences</h2>
         <p className="text-sm text-indigo-700 mb-4">
-          Pour modifier vos comp&eacute;tences, pr&eacute;f&eacute;rences de recherche ou CV, remplissez &agrave; nouveau le formulaire d&apos;onboarding.
+          Pour modifier vos compétences, préférences de recherche ou CV, remplissez à nouveau le formulaire.
         </p>
         <a
           href="https://tally.so/r/b5kE41"
@@ -188,7 +222,7 @@ export default function Profil() {
           rel="noopener noreferrer"
           className="inline-block bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
         >
-          Mettre &agrave; jour mon profil &rarr;
+          Mettre à jour mon profil →
         </a>
       </div>
     </div>
