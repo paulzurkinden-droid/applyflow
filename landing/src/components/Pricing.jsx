@@ -9,8 +9,9 @@ const plans = [
     features: [
       'Alertes emploi personnalisées',
       'Scoring IA des offres',
-      'Jusqu\'à 10 offres par jour',
-      'Digest email quotidien',
+      '2 LM + CV adaptés / mois',
+      'Suivi des candidatures',
+      'Stockage Google Drive',
     ],
     cta: 'Commencer pour CHF 9',
     paymentLinkEnvKey: 'VITE_STRIPE_PAYMENT_LINK_STARTER',
@@ -24,10 +25,8 @@ const plans = [
     badge: 'Populaire',
     features: [
       'Tout Starter inclus',
-      '2 lettres de motivation IA/mois',
-      'Suivi des candidatures',
-      'Offres illimitées par jour',
-      'Stockage Google Drive',
+      '10 LM + CV adaptés / mois',
+      'Support email',
     ],
     cta: 'Choisir Pro',
     paymentLinkEnvKey: 'VITE_STRIPE_PAYMENT_LINK_PRO',
@@ -37,13 +36,12 @@ const plans = [
     name: 'Booster',
     price: 'CHF 39',
     period: '/mois',
-    description: 'Pour maximiser vos chances avec un accompagnement premium.',
+    description: 'Pour maximiser vos chances avec un accompagnement complet.',
     features: [
       'Tout Pro inclus',
-      'LM illimitées',
+      'LM + CV adaptés illimités',
+      'Simulation entretien IA (bientôt)',
       'Support prioritaire',
-      'Revue de CV par l\'IA',
-      'Accès anticipé aux nouvelles fonctions',
     ],
     cta: 'Choisir Booster',
     paymentLinkEnvKey: 'VITE_STRIPE_PAYMENT_LINK_BOOSTER',
@@ -85,7 +83,6 @@ export default function Pricing() {
                   : 'bg-white text-slate-900 shadow-sm border border-slate-200'
               }`}
             >
-              {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <span className="bg-yellow-400 text-yellow-900 text-sm font-bold px-4 py-1 rounded-full shadow">
@@ -94,12 +91,10 @@ export default function Pricing() {
                 </div>
               )}
 
-              {/* Plan name */}
               <h3 className={`text-xl font-bold mb-2 ${plan.highlighted ? 'text-white' : 'text-slate-900'}`}>
                 {plan.name}
               </h3>
 
-              {/* Price */}
               <div className="mb-4">
                 <span className={`text-4xl font-extrabold ${plan.highlighted ? 'text-white' : 'text-slate-900'}`}>
                   {plan.price}
@@ -113,7 +108,6 @@ export default function Pricing() {
                 {plan.description}
               </p>
 
-              {/* Features */}
               <ul className="space-y-3 mb-8 flex-grow">
                 {plan.features.map((feature, fIdx) => (
                   <li key={fIdx} className="flex items-start gap-3">
@@ -127,7 +121,6 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              {/* CTA */}
               <button
                 onClick={() => handlePaymentClick(plan)}
                 className={`w-full px-6 py-3 rounded-full font-bold transition-colors cursor-pointer ${
@@ -143,7 +136,7 @@ export default function Pricing() {
         </div>
 
         <p className="text-center text-slate-500 mt-8 text-sm">
-          Tous les prix sont en francs suisses (CHF), TVA incluse. Annulation possible à tout moment.
+          Tous les prix sont en francs suisses (CHF), TVA incluse. Sans engagement, annulation possible à tout moment.
         </p>
       </div>
     </section>
