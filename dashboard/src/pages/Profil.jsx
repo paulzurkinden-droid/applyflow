@@ -7,6 +7,8 @@ const PLAN_COLORS = {
   booster: 'bg-violet-100 text-violet-700',
 };
 
+const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/test_00w8wOdKEcG714D3kMcV200';
+
 export default function Profil() {
   const [profil, setProfil] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -82,9 +84,9 @@ export default function Profil() {
 
   if (!profil) return (
     <div className="text-center py-16">
-      <p className="text-slate-500 mb-4">Profil introuvable. Votre compte est peut-&ecirc;tre en cours d&apos;initialisation.</p>
+      <p className="text-slate-500 mb-4">Profil introuvable. Votre compte est peut-être en cours d'initialisation.</p>
       <a href="https://tally.so/r/b5kE41" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
-        Compl&eacute;ter mon profil &rarr;
+        Compléter mon profil →
       </a>
     </div>
   );
@@ -126,6 +128,15 @@ export default function Profil() {
             </div>
           </>
         )}
+        <hr className="border-slate-100" />
+        <a
+          href={STRIPE_PORTAL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:underline"
+        >
+          Gérer mon abonnement ↗
+        </a>
       </div>
 
       {/* Coordonnées éditables */}
@@ -143,7 +154,6 @@ export default function Profil() {
         </p>
         <hr className="border-slate-100" />
 
-        {/* Adresse (rue) */}
         <div className="space-y-1">
           <label htmlFor="adresse" className="text-sm font-medium text-slate-600">Rue et numéro</label>
           <input
@@ -156,7 +166,6 @@ export default function Profil() {
           />
         </div>
 
-        {/* NPA + Ville sur la même ligne */}
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
             <label htmlFor="npa" className="text-sm font-medium text-slate-600">NPA</label>
@@ -183,7 +192,6 @@ export default function Profil() {
           </div>
         </div>
 
-        {/* Téléphone */}
         <div className="space-y-1">
           <label htmlFor="telephone" className="text-sm font-medium text-slate-600">Téléphone</label>
           <input
@@ -224,6 +232,33 @@ export default function Profil() {
         >
           Mettre à jour mon profil →
         </a>
+      </div>
+
+      {/* Désactivation */}
+      <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-6">
+        <h2 className="font-bold text-slate-900 mb-2">Désactiver mon compte</h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Vous ne recevrez plus d'alertes emploi ni de notifications. Vos données seront conservées et vous pourrez réactiver votre compte à tout moment.
+        </p>
+        <button
+          onClick={async () => {
+            if (!window.confirm('Êtes-vous sûr de vouloir désactiver votre compte ? Vous ne recevrez plus d\'alertes emploi.')) return;
+            const { error } = await supabase
+              .from('profils')
+              .update({ actif: false })
+              .eq('id', profil.id);
+            if (error) {
+              alert('Erreur : ' + error.message);
+            } else {
+              setProfil(prev => ({ ...prev, actif: false }));
+              alert('Votre compte a été désactivé. Vous pouvez le réactiver en contactant support@applyflow.ch');
+            }
+          }}
+          disabled={!profil.actif}
+          className="px-5 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-semibold hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {profil.actif ? 'Désactiver mon compte' : 'Compte désactivé'}
+        </button>
       </div>
     </div>
   );
